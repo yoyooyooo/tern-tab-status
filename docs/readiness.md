@@ -15,11 +15,11 @@ The English README addresses external Tern users; the Chinese version serves the
 | Development dependency audit | pass | `npm audit --json` on 2026-10-15 returned zero known vulnerabilities; `luau-web@1.5.1` is development-only. |
 | Portable source checks | pass | `npm run check`: both Luau runtime files compile, 14 behavioral scenarios pass, and 24 local documentation links resolve. The same command passes after `npm ci --ignore-scripts` in an extracted source copy. |
 | Clean source installation and live load | pass | A source archive excluding `.git` and `node_modules` installs through `tern plugin install` into a separate config directory. Its plugin commands run in an isolated Tern process; native progress produces a blue tab, and Pause restores its original uncolored state. After migration to `tern-tab-status`, Tern reports the new ID ready without problems, completion state is retained, Resume produces blue/green status colors, and Pause restores all affected tabs to their original colors. |
-| Local documentation rendering and links | pass | English and Chinese Markdown previews inspected at 1280 px and 390 px. Both language directions and English/Chinese section anchors were exercised. Narrow previews have no document overflow. Public-host rendering remains unverified. |
+| Documentation rendering and links | pass | Local previews were inspected at 1280 px and 390 px. The public GitHub English installation section and Chinese narrow README were visually inspected; both language directions and English/Chinese installation anchors were exercised. The 390 px GitHub view has no page overflow. |
 | Privacy scan of distribution | pass | Source, docs, test fixture, and lockfile have no matches for maintainer home paths, old installation paths, private hostnames, private key headers, or common credential prefixes. Archive inventory contains the source, both READMEs, supporting docs, license, tests, and tooling; no local state or development packages. |
-| Hosted CI | not_verified | The Check workflow uses Node.js 22, `npm ci --ignore-scripts`, and `npm run check`. Its first public run will be checked after the initial push. |
+| Hosted CI | pass | [Check run 38683250332](https://github.com/yoyooyooo/tern-tab-status/actions/runs/38683250332) passed for source commit `ecdf8622083ea9f6242fb21cc90454c475c63af8`. GitHub reports successful checkout, Node.js setup, `npm ci --ignore-scripts`, and `npm run check`. |
 | Public repository, support, private reporting | pass | GitHub API readback confirms `yoyooyooo/tern-tab-status` is public, Issues are enabled, and private vulnerability reporting returns `enabled: true`. README, contributor guidance, security policy, and package metadata point to the public repository. |
-| GitHub installation of this project | not_verified | Both READMEs contain the real public URL. A clean Tern URL installation will be exercised after the initial push. |
+| GitHub installation of this project | pass | Clean isolated installs succeeded using both the HTTPS repository URL and `github.com/yoyooyooo/tern-tab-status` shorthand. Reinstallation with `--force` succeeded. The HTTPS-installed copy passed `npm ci --ignore-scripts` and all 14 behavior scenarios, loaded in isolated Tern, produced a native blue tab, and restored its original color when paused. Runtime file SHA-256 values match the published source. |
 | Additional native wait screenshot | not_verified | The added wait-and-screenshot scenario timed out. Its screenshot is not counted as evidence; wait-state behavior is covered by the portable suite and earlier host acceptance. The rename changes command display titles only within the runtime source. |
 
 ## Not applicable to this distribution
@@ -33,15 +33,15 @@ The English README addresses external Tern users; the Chinese version serves the
 
 ## Publication verification
 
-The public repository and private reporting endpoint have been read back. The initial push, hosted CI, direct GitHub URL installation, and GitHub-rendered README navigation still require evidence. Source history begins with this repository conversion and contains no imported private history.
+The public repository, MIT license, default branch, Issues, and private reporting endpoint were read back through GitHub. Source commit `ecdf8622083ea9f6242fb21cc90454c475c63af8` is publicly reachable and its hosted CI passed. Direct GitHub installation, manual update, installed runtime behavior, and hosted README navigation were exercised. Source history begins with this repository conversion and contains no imported private history.
 
-Readiness: **conditional** while the remaining publication checks run. Platform support remains limited to Tern 0.8.3 on macOS arm64.
+Readiness: **conditional** because the additional native wait screenshot remains unverified after a timeout; no 100% readiness claim is made. Public source distribution itself is verified. Platform support remains limited to Tern 0.8.3 on macOS arm64, and pi is not yet supported.
 
 ## Documentation audit
 
 Audit date: 2026-10-15. Project: Tern Tab Status. Scope: both READMEs, contributor/security/changelog/readiness documents, plugin manifest, runtime modules, check script, behavior suite, dependency manifests, and CI workflow.
 
-Conclusion: pass for the source contract. Findings: P0: 0, P1: 0, P2: 0, P3: 0. Public push, hosted CI, GitHub URL installation, and GitHub-rendered navigation are awaiting evidence. An earlier optional native wait screenshot timed out and is not counted as a successful verification; portable input-wait tests and earlier host acceptance remain separate evidence.
+Conclusion: pass for the public source contract. Findings: P0: 0, P1: 0, P2: 0, P3: 0. Public push, hosted CI, GitHub URL installation/update, installed runtime smoke, and GitHub-rendered navigation have evidence above. An earlier optional native wait screenshot timed out and is not counted as a successful verification; portable input-wait tests and earlier host acceptance remain separate evidence.
 
 Reviewed scenarios: GitHub URL/shorthand, repository subdirectory selection, local copy/link installation, and upgrade commands against Tern CLI help, plus clean local installation; state priority and read/unread behavior against `status.luau` and native pane alerts; manual-color restoration and shared pause against `window.luau`; runtime dependencies, bounded surface inspection, local persistence, and networking statements against the actual runtime API calls. All claims are limited to the evidence above.
 
