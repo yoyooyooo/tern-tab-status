@@ -3,7 +3,7 @@ local POLL_MS = 750
 local enabled = tern.kv.get("enabled") ~= false
 local pending = nil
 
-local function color_value(value)
+local function optional_value(value)
     return if value == tern.json.null then nil else value
 end
 
@@ -15,13 +15,13 @@ end
 local function apply_color(cx, tab, desired)
     local key = record_key(tab)
     local saved = tern.kv.get(key)
-    local current = color_value(tab.color)
+    local current = optional_value(tab.color)
     local dirty = false
     if desired then
         if not saved then
             saved = {original = current or tern.json.null}
             dirty = true
-        elseif current ~= color_value(saved.applied) then
+        elseif current ~= optional_value(saved.applied) then
             -- A manual color change becomes the color restored after activity.
             saved.original = current or tern.json.null
             dirty = true
@@ -36,48 +36,53 @@ local function apply_color(cx, tab, desired)
         end
     elseif saved then
         -- Do not overwrite a manual change made since the last synchronization.
-        if current == color_value(saved.applied) then
-            cx.layout:color_tab(tab.id, color_value(saved.original))
+        if current == optional_value(saved.applied) then
+            cx.layout:color_tab(tab.id, optional_value(saved.original))
         end
         tern.kv.set(key, nil)
     end
 end
 
-local function is_omp(cx, agent, pane)
-    local surface = cx.session:surface(agent.pane, {nodes = 1, depth = 1, max_chars = 128})
-    if surface and surface.surface.role == "omp.session" then
-        return true
-    end
-    return pane.program == "omp" or string.match(pane.program or "", "[/\\]omp$") ~= nil
+local shells = {sh = true, bash = true, zsh = true, fish = true, dash = true, ksh = true, csh = true, tcsh = true}
+
+local function is_supported(cx, agent)
+    local program = optional_value(agent.program)
+    local basename = program and string.match(program, "([^/\\]+)$")
+    if basename == "omp" or basename == "pi" then return true end
+    if not shells[basename] then return false end
+    local surface = optional_value(cx.session:surface(agent.pane, {nodes = 1, depth = 1, max_chars = 128}))
+    local root = surface and optional_value(surface.surface)
+    return root ~= nil and root.role == "omp.session"
 end
 
 local function sync(cx)
     enabled = tern.kv.get("enabled") ~= false
     local by_tab = {}
-    if enabled then
-        for _, agent in ipairs(cx.agents:list()) do
-            local pane = cx.session:pane(agent.pane)
-            if pane and is_omp(cx, agent, pane) then
-                local result_key = "result:" .. tostring(agent.pane)
-                local result = tern.kv.get(result_key)
-                if not pane.alert and result ~= nil then
-                    tern.kv.set(result_key, nil)
-                    result = nil
+    for _, agent in ipairs(cx.agents:list()) do
+        local key = "result:" .. tostring(agent.pane)
+        local result = tern.kv.get(key)
+        local alert = optional_value(agent.alert)
+        local supported = is_supported(cx, agent)
+        if result ~= nil and (not supported or not alert) then
+            tern.kv.set(key, nil)
+            result = nil
+        end
+        if supported then
+            local tab = optional_value(agent.tab)
+            if enabled and tab ~= nil then
+                local group = by_tab[tab]
+                if not group then
+                    group = {}
+                    by_tab[tab] = group
                 end
-                if pane.tab then
-                    local group = by_tab[pane.tab]
-                    if not group then
-                        group = {}
-                        by_tab[pane.tab] = group
-                    end
-                    table.insert(group, {
-                        state = agent.state,
-                        alert = pane.alert,
-                        result = if agent.progress and agent.progress.state == "error" then "failed" else result,
-                        error = pane.error,
-                        exited = pane.exited,
-                    })
-                end
+                local progress = optional_value(agent.progress)
+                table.insert(group, {
+                    state = optional_value(agent.state),
+                    alert = alert,
+                    result = if progress and progress.state == "error" then "failed" else result,
+                    error = optional_value(agent.error),
+                    exited = optional_value(agent.exited),
+                })
             end
         end
     end
@@ -103,9 +108,7 @@ local function refresh()
     schedule(0)
 end
 
-tern.on("agent_finished", function(ev, cx)
-    local pane = cx.session:pane(ev.pane)
-    if tern.kv.get("enabled") == false or not pane or not is_omp(cx, {pane = ev.pane}, pane) then return end
+tern.on("agent_finished", function(ev)
     if ev.result == "done" or ev.result == "failed" then
         tern.kv.set("result:" .. tostring(ev.pane), ev.result)
     end
@@ -113,10 +116,40 @@ tern.on("agent_finished", function(ev, cx)
     refresh()
 end)
 
-for _, event in ipairs({"focus", "pane_created", "pane_closed", "tab_created", "tab_closed", "command_started", "command_finished", "title"}) do
+tern.on("pane_closed", function(ev)
+    tern.kv.set("result:" .. tostring(ev.pane), nil)
+    refresh()
+end)
+
+for _, event in ipairs({"focus", "pane_created", "tab_created", "tab_closed", "command_started", "command_finished", "title"}) do
     tern.on(event, refresh)
 end
 tern.on("window_start", refresh)
+
+local function new_agent_tab(cx, command)
+    local original = cx.settings:get("agent_command")
+    local placement = cx.settings:get("agent_placement")
+    -- Tern 0.8.3 captures both preferences synchronously during creation.
+    -- Create the Agent Block in its tab directly, then restore both preferences.
+    cx.settings:set_many({agent_command = command, agent_placement = "new_tab"})
+    local ok, err = pcall(function() cx.actions:run("new_agent_block") end)
+    cx.settings:set_many({agent_command = original, agent_placement = placement})
+    if not ok then error(err) end
+end
+
+tern.command({
+    id = "new_omp_tab",
+    title = "New OMP Tab",
+    group = "Agents",
+    run = function(cx) new_agent_tab(cx, "omp") end,
+})
+
+tern.command({
+    id = "new_pi_tab",
+    title = "New Pi Tab",
+    group = "Agents",
+    run = function(cx) new_agent_tab(cx, "pi") end,
+})
 
 tern.command({
     id = "pause",

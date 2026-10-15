@@ -22,7 +22,7 @@ local function runtime(store)
     r.cx = {
         agents = {list = function() return r.agents end},
         session = {
-            pane = function(_, id) return r.panes[id] end,
+            pane = function() error("session:pane is unavailable") end,
             tabs = function() return r.tabs end,
             surface = function(_, id) return r.surfaces[id] end,
         },
@@ -71,12 +71,16 @@ local function runtime(store)
         self.commands[name](self.cx)
     end
     function r:add(id, tab, state, alert, program, role)
-        local pane = {tab = tab.id, alert = alert or false, program = program or "omp"}
-        local agent = {pane = id, state = state}
-        self.panes[id] = pane
+        local agent = {
+            pane = id, tab = tab.id, session = tab.session, program = program or "omp",
+            state = state, alert = alert or false, progress = null, error = null, exited = null,
+            alive = true, at_prompt = state == "idle", busy = state == "working",
+            kind = "agent", floating = false, focused = false, host = 0, parked = false,
+        }
+        self.panes[id] = agent
         table.insert(self.agents, agent)
         if role then self.surfaces[id] = {surface = {role = role}} end
-        return pane, agent
+        return agent, agent
     end
     r:boot()
     return r
@@ -84,7 +88,7 @@ end
 
 local function tab_fixture(color, store, session)
     local r = runtime(store)
-    local tab = {id = 7, session = session or "session", color = color}
+    local tab = {id = 7, session = session or 4, color = color}
     table.insert(r.tabs, tab)
     return r, tab
 end
@@ -156,6 +160,115 @@ test("completion results clear with native attention", function()
     equal(tab.color, "green", "Later successful completion")
 end)
 
+test("rich snapshots drive failure and read restore without pane lookup", function()
+    local r, tab = tab_fixture("purple")
+    tab.id = 55834574858
+    local pane = 55834574884
+    local agent = r:add(pane, tab, "working", false, "/opt/bin/omp")
+    r:tick()
+    equal(tab.color, "blue", "Null error and exit do not imply failure")
+    agent.state = "idle"
+    agent.alert = true
+    r:event("agent_finished", {pane = pane, result = "failed"})
+    r:tick()
+    equal(tab.color, "red", "Snapshot attention and event result")
+    r:boot()
+    r:tick()
+    equal(tab.color, "red", "Failure survives reload")
+    agent.alert = null
+    r:event("focus")
+    r:tick()
+    equal(tab.color, "purple", "Read restores original color")
+    agent.alert = true
+    r:tick()
+    equal(tab.color, "green", "Later native attention has no stale failure")
+    agent.alert = false
+    agent.state = "working"
+    agent.progress = {state = "error"}
+    r:tick()
+    equal(tab.color, "blue", "Acknowledged progress failure remains working")
+    agent.alert = true
+    r:tick()
+    equal(tab.color, "red", "Progress failure requires native attention")
+    agent.state = "idle"
+    agent.alert = false
+    r:tick()
+    equal(tab.color, "purple", "Failure read restores original color")
+end)
+
+test("snapshot native failures normalize nullable optional fields", function()
+    local r, tab = tab_fixture("purple")
+    local agent = r:add(1, tab, "idle", true)
+    r:tick()
+    equal(tab.color, "green", "Null error, progress and exit are absent")
+    agent.error = "Provider failed"
+    r:tick()
+    equal(tab.color, "red", "Snapshot error")
+    agent.error = null
+    agent.exited = 1
+    r:tick()
+    equal(tab.color, "red", "Snapshot failed exit")
+    agent.exited = 0
+    r:tick()
+    equal(tab.color, "green", "Snapshot successful exit")
+    agent.alert = null
+    r:tick()
+    equal(tab.color, "purple", "Null attention is absent")
+end)
+
+test("missing and unsupported panes cannot retain completion failures", function()
+    for _, change in ipairs({"missing", "unsupported"}) do
+        local r, tab = tab_fixture("purple")
+        local agent = r:add(1, tab, "idle", true)
+        r:event("agent_finished", {pane = 1, result = "failed"})
+        r:tick()
+        equal(tab.color, "red", "Initial failure")
+        if change == "missing" then
+            r.agents = {}
+            r:event("pane_closed", {pane = 1})
+        else
+            agent.program = "unknown"
+        end
+        r:tick()
+        equal(tab.color, "purple", "Ineligible snapshot restores color")
+        agent.program = "omp"
+        r.agents = {agent}
+        r:tick()
+        equal(tab.color, "green", "Stale failure was pruned")
+    end
+end)
+
+test("finished events defer eligibility to the next snapshot", function()
+    local r, tab = tab_fixture("purple")
+    r:event("agent_finished", {pane = 1, result = "failed"})
+    r:add(1, tab, "idle", true)
+    r:tick()
+    equal(tab.color, "red", "Completion can precede snapshot publication")
+    r:event("agent_finished", {pane = 1, result = "done"})
+    r:tick()
+    equal(tab.color, "green", "Latest completion replaces failure")
+end)
+
+test("one window cannot discard another window's failure result", function()
+    local store = {}
+    local first, a = tab_fixture("purple", store, 4)
+    local second, b = tab_fixture("orange", store, 5)
+    first:add(1, a, "idle", true)
+    second:add(2, b, "idle", true)
+    first:event("agent_finished", {pane = 1, result = "failed"})
+    second:event("agent_finished", {pane = 2, result = "failed"})
+    first:tick()
+    second:tick()
+    equal(a.color, "red", "First window retains failure")
+    equal(b.color, "red", "Second window retains failure")
+    first.agents = {}
+    first:event("pane_closed", {pane = 1})
+    first:tick()
+    second:tick()
+    equal(a.color, "purple", "Closed pane restores first window")
+    equal(b.color, "red", "Other window's result survives cleanup")
+end)
+
 test("progress errors use red only while attention remains", function()
     local r, tab = tab_fixture(nil)
     local pane, agent = r:add(1, tab, "working", true)
@@ -177,6 +290,82 @@ test("native attention is never acknowledged by synchronization", function()
     equal(tab.color, "green", "Attention still visible")
 end)
 
+test("pi failures and OMP activity share the same attention rules", function()
+    local r, tab = tab_fixture("purple")
+    local piPane, piAgent = r:add(1, tab, "working", false, "/opt/bin/pi")
+    r:add(2, tab, "working")
+    r:tick()
+    equal(tab.color, "blue", "Both agents working")
+    piAgent.state = "waiting_input"
+    r:tick()
+    equal(tab.color, "yellow", "Pi input takes priority")
+    piAgent.state = "idle"
+    piPane.alert = true
+    r:event("agent_finished", {pane = 1, result = "failed"})
+    r:tick()
+    equal(tab.color, "red", "Pi failure result retained")
+    piPane.alert = false
+    r:event("focus")
+    r:tick()
+    equal(tab.color, "blue", "Viewed Pi leaves OMP working")
+end)
+
+test("agent tabs preserve existing panes and launch preferences", function()
+    for _, program in ipairs({"pi", "omp"}) do
+        for _, placement in ipairs({"split", "replace_if_alone", "new_tab"}) do
+            local r, original = tab_fixture("purple")
+            local preferences = {agent_command = "omp --model custom", agent_placement = placement}
+            local focused = 1
+            local originalPane = r:add(1, original, "idle")
+            r.cx.session.focused = function() return focused end
+            r.cx.settings = {
+                get = function(_, key) return preferences[key] end,
+                set = function(_, key, value) preferences[key] = value end,
+                set_many = function(_, patch)
+                    for key, value in pairs(patch) do preferences[key] = value end
+                end,
+            }
+            r.cx.actions = {run = function()
+                if preferences.agent_placement == "replace_if_alone" then
+                    r.panes[1] = nil
+                end
+                local destination = original
+                if preferences.agent_placement == "new_tab" then
+                    destination = {id = 8, session = original.session}
+                    table.insert(r.tabs, destination)
+                end
+                r:add(2, destination, "idle", false, preferences.agent_command)
+                focused = 2
+            end}
+            r.cx.layout.move_to_new_tab = function() return nil, "unknown block/session" end
+            r:command(if program == "pi" then "new_pi_tab" else "new_omp_tab")
+            equal(r.panes[1], originalPane, "Existing conversation preserved")
+            equal(r.panes[1].tab, original.id, "Existing pane stays in its tab")
+            equal(r.panes[2].tab, 8, "New conversation has its own tab")
+            equal(r.panes[2].program, program, "Chosen agent")
+            equal(focused, 2, "New conversation receives focus")
+            equal(preferences.agent_command, "omp --model custom", "Custom default restored")
+            equal(preferences.agent_placement, placement, "Placement restored")
+        end
+    end
+end)
+
+test("failed agent launch restores command and placement", function()
+    local r = runtime()
+    local preferences = {agent_command = "omp --model custom", agent_placement = "replace_if_alone"}
+    r.cx.settings = {
+        get = function(_, key) return preferences[key] end,
+        set_many = function(_, patch)
+            for key, value in pairs(patch) do preferences[key] = value end
+        end,
+    }
+    r.cx.actions = {run = function() error("Launch refused") end}
+    local ok = pcall(function() r:command("new_pi_tab") end)
+    equal(ok, false, "Launch failure reported")
+    equal(preferences.agent_command, "omp --model custom", "Custom default preserved on failure")
+    equal(preferences.agent_placement, "replace_if_alone", "Placement preserved on failure")
+end)
+
 test("ordinary shells keep their colors while OMP surfaces are recognized", function()
     local r, tab = tab_fixture("purple")
     r:add(1, tab, "working", false, "zsh")
@@ -196,6 +385,32 @@ test("OMP executable paths are recognized", function()
         r:tick()
         equal(tab.color, "blue", "Executable path")
     end
+end)
+
+test("unknown programs and near matches are unsupported", function()
+    for _, program in ipairs({"unknown", "myomp", "/opt/bin/omp-helper", "pi.exe", "", null}) do
+        local r, tab = tab_fixture("purple")
+        r:add(1, tab, "working", true, program, "omp.session")
+        r:event("agent_finished", {pane = 1, result = "failed"})
+        r:tick()
+        equal(tab.color, "purple", "Unknown program ignored even with a surface")
+    end
+end)
+
+test("shell surfaces are sampled again when support changes", function()
+    local r, tab = tab_fixture("purple")
+    r:add(1, tab, "working", false, "/bin/zsh", "omp.session")
+    r:tick()
+    equal(tab.color, "blue", "OMP shell surface")
+    r.surfaces[1] = {surface = null}
+    r:tick()
+    equal(tab.color, "purple", "Null surface removes support")
+    r.surfaces[1] = null
+    r:tick()
+    equal(tab.color, "purple", "Null response remains unsupported")
+    r.surfaces[1] = {surface = {role = "omp.session"}}
+    r:tick()
+    equal(tab.color, "blue", "Reappearing surface restores support")
 end)
 
 test("manual colors observed during activity become the restore color", function()
@@ -255,7 +470,7 @@ test("losing an OMP agent restores the tab without clearing other tabs", functio
     r:add(1, tab, "working")
     r:tick()
     r.agents = {}
-    r:event("pane_closed")
+    r:event("pane_closed", {pane = 1})
     r:tick()
     equal(tab.color, "purple", "Agent removed")
 end)
