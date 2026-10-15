@@ -1,0 +1,6 @@
+schema = 1
+id = "tern-tab-status"
+name = "Tern Tab Status"
+version = "0.1.0"
+description = "Mirror agent activity and unread attention in the native tab color dot (currently OMP)."
+window = "window.luau"
