@@ -1,6 +1,6 @@
 schema = 1
 id = "tern-tab-status"
 name = "Tern Tab Status"
-version = "0.1.0"
-description = "Mirror agent activity and unread attention in the native tab color dot (currently OMP)."
+version = "0.2.0"
+description = "Mirror OMP and pi activity in native tab color dots, with separate launch commands."
 window = "window.luau"
