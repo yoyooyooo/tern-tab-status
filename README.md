@@ -10,6 +10,12 @@
   <a href="#read-the-colors">Colors</a> · <a href="#limitations">Limitations</a>
 </p>
 
+<p align="center">
+  <img src="./docs/images/tab-status-sidebar.png" width="360" alt="Tern's vertical sidebar with blue, green, yellow, and red status dots, plus an idle tab without a dot.">
+  <br>
+  <sub>Session status demo in Tern 0.8.3.</sub>
+</p>
+
 When several OMP sessions run in different tabs or split panes, switching between them interrupts the work you are following. Tern Tab Status combines each tab's OMP state into its native color dot. Tab titles stay yours, and OMP needs no hooks or extensions.
 
 Verified with **Tern 0.8.3 on macOS arm64**. Currently supports OMP only; other host versions and platforms are unverified.

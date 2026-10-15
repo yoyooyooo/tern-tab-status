@@ -10,6 +10,12 @@
   <a href="#读懂圆点">圆点含义</a> · <a href="#限制">限制</a>
 </p>
 
+<p align="center">
+  <img src="./docs/images/tab-status-sidebar.png" width="360" alt="Tern 垂直侧栏中显示蓝、绿、黄、红状态圆点，以及没有圆点的空闲标签。">
+  <br>
+  <sub>Tern 0.8.3 垂直标签栏中的会话状态演示。</sub>
+</p>
+
 多个 OMP 会话分散在不同 Tab 或分屏里时，来回切换会打断正在关注的工作。Tern Tab Status 把每个 Tab 中的 OMP 状态汇总到原生颜色圆点上，保留原来的标题，也不需要给 OMP 安装 hook 或扩展。
 
 已验证 **macOS arm64 上的 Tern 0.8.3**。目前仅支持 OMP；其他宿主版本和平台尚未验证。

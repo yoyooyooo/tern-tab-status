@@ -11,5 +11,6 @@
 - Document direct GitHub URL installation, repository subdirectory syntax, and manual updates with `--force`.
 - Reorganize both READMEs around a centered title, a short outcome description, color meanings, and a three-step first use; fold local installation details.
 - Include HTML navigation links in the documentation check.
+- Add a native vertical-sidebar screenshot to both READMEs, showing the plugin's four status colors and an idle tab with staged agent signals.
 
 Source is distributed from the public GitHub repository's `main` branch. No tagged release has been created.
