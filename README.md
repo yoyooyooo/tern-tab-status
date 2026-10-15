@@ -1,12 +1,20 @@
-# Tern Tab Status
+<h1 align="center">Tern Tab Status</h1>
 
-[English](./README.md) | [简体中文](./README.zh-CN.md)
+> See which OMP sessions are working, waiting, or need your attention in Tern's tab bar.
 
-Show agent activity and unread attention in Tern's native tab color dot. Currently supports OMP. Keep track of several agent panes without changing their titles or installing OMP hooks.
+<p align="center">
+  <a href="./README.md">English</a> · <a href="./README.zh-CN.md">简体中文</a>
+</p>
+<p align="center">
+  <a href="#install">Install</a> · <a href="#try-it">Try it</a> ·
+  <a href="#read-the-colors">Colors</a> · <a href="#limitations">Limitations</a>
+</p>
 
-Experimental, source-only plugin. Verified with **Tern 0.8.3 on macOS arm64**; other host versions and platforms are unverified.
+When several OMP sessions run in different tabs or split panes, switching between them interrupts the work you are following. Tern Tab Status combines each tab's OMP state into its native color dot. Tab titles stay yours, and OMP needs no hooks or extensions.
 
-[Install](#install) · [Usage](#usage) · [Limitations](#limitations) · [Development](#development)
+Verified with **Tern 0.8.3 on macOS arm64**. Currently supports OMP only; other host versions and platforms are unverified.
+
+## Read the colors
 
 | Dot | Meaning |
 | --- | --- |
@@ -20,7 +28,7 @@ A tab combines all its OMP panes, in this priority order: **red → yellow → g
 
 ## Install
 
-You need Tern with its plugin CLI and an OMP session recognized by Tern. Git must be available for URL installation. The plugin has no runtime dependencies or build step. Node.js is only needed for development checks.
+You need Tern with its plugin CLI and an OMP session recognized by Tern. Git must be available for URL installation. The plugin has no runtime dependencies or build step. Node.js is only needed for development checks. If `tern` is not on your macOS PATH, use `/Applications/Tern.app/Contents/MacOS/tern` in its place.
 
 ### From GitHub
 
@@ -28,13 +36,13 @@ Tern can clone and install this plugin directly from GitHub:
 
 ```sh
 tern plugin install https://github.com/yoyooyooo/tern-tab-status.git
-# Equivalent GitHub shorthand:
-tern plugin install github.com/yoyooyooo/tern-tab-status
+tern plugin list --json
 ```
 
-URL installation copies the plugin into Tern's plugin directory; it does not require a checkout that you maintain yourself. Run `tern plugin list --json` and confirm `tern-tab-status` is `ready` with no problem for this plugin. If `tern` is not on your macOS PATH, use `/Applications/Tern.app/Contents/MacOS/tern` in its place. For plugins in a repository subdirectory, Tern also accepts `github.com/OWNER/REPO/PATH`.
+Confirm `tern-tab-status` is `ready` with no problem for this plugin. URL installation copies the plugin into Tern's plugin directory; you do not need to maintain a checkout. The equivalent GitHub shorthand is `tern plugin install github.com/yoyooyooo/tern-tab-status`.
 
-### From local source
+<details>
+<summary>Install from local source</summary>
 
 From an extracted or cloned copy of this repository:
 
@@ -43,7 +51,7 @@ tern plugin link "$PWD"
 tern plugin list --json
 ```
 
-Run these commands at the repository root. If `tern` is not on your macOS PATH, use `/Applications/Tern.app/Contents/MacOS/tern` in its place. The plugin list should contain `tern-tab-status` with `status: "ready"` and no problem for this plugin. A link loads files from this checkout; keep the directory in place.
+Run these commands at the repository root. The plugin list should contain `tern-tab-status` with `status: "ready"` and no problem for this plugin. A link loads files from this checkout; keep the directory in place.
 
 For a copied installation that does not depend on the checkout location:
 
@@ -51,11 +59,19 @@ For a copied installation that does not depend on the checkout location:
 tern plugin install "$PWD"
 ```
 
-## Usage
+For plugins in a repository subdirectory, Tern also accepts `github.com/OWNER/REPO/PATH`.
 
-Start an OMP request in one tab, then switch to another tab. While it works, the first tab shows blue. When it finishes with native attention pending, it shows green; a failure with pending attention shows red. Input or approval waits show yellow.
+</details>
 
-Return to the relevant pane, or jump to it through Tern's **Needs attention** view. Tern clears its native attention flag, and an idle tab returns to its original color. With split panes, focusing one pane does not acknowledge the others. Input waits remain yellow until the agent leaves `waiting_input`.
+## Try it
+
+1. Start an OMP request in a tab with no pending attention, then switch to another tab. The first tab shows blue while it works.
+2. Let the request finish. If Tern marks the pane as needing attention, the tab shows green.
+3. Return to that pane, or use Tern's **Needs attention** view. Once its attention clears, the idle tab returns to its original color.
+
+With split panes, focusing one pane does not acknowledge the others. Input waits remain yellow until the agent leaves `waiting_input`.
+
+## Controls
 
 The command palette includes:
 

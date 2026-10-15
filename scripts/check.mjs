@@ -61,8 +61,11 @@ const slug = (heading) => heading.toLowerCase()
 let links = 0;
 for (const name of docs) {
     const source = (await text(name)).replace(/^```[^\n]*\n[\s\S]*?^```/gm, '');
-    for (const match of source.matchAll(/\[[^\]]*\]\(([^\s)]+)\)/g)) {
-        const href = match[1];
+    const hrefs = [
+        ...source.matchAll(/\[[^\]]*\]\(([^\s)]+)\)/g),
+        ...source.matchAll(/\bhref=["']([^"']+)["']/g),
+    ].map((match) => match[1]);
+    for (const href of hrefs) {
         if (/^[a-z]+:/i.test(href)) continue;
         const [file, anchor] = href.split('#');
         const target = path.resolve(root, path.dirname(name), decodeURIComponent(file || path.basename(name)));

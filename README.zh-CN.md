@@ -1,26 +1,34 @@
-# Tern Tab Status
+<h1 align="center">Tern Tab Status</h1>
 
-[English](./README.md) | [简体中文](./README.zh-CN.md)
+> 在 Tern 标签栏里，直接看到哪些 OMP 会话正在运行、等待输入，或需要查看。
 
-把 Agent 的运行状态和未查看提醒显示在 Tern 原生 Tab 颜色圆点上，目前支持 OMP。方便同时关注多个 agent pane，不改标题，也不向 OMP 安装 hook。
+<p align="center">
+  <a href="./README.md">English</a> · <a href="./README.zh-CN.md">简体中文</a>
+</p>
+<p align="center">
+  <a href="#安装">安装</a> · <a href="#试用">试用</a> ·
+  <a href="#读懂圆点">圆点含义</a> · <a href="#限制">限制</a>
+</p>
 
-实验性源码插件。已验证 **macOS arm64 上的 Tern 0.8.3**；其他宿主版本和平台尚未验证。
+多个 OMP 会话分散在不同 Tab 或分屏里时，来回切换会打断正在关注的工作。Tern Tab Status 把每个 Tab 中的 OMP 状态汇总到原生颜色圆点上，保留原来的标题，也不需要给 OMP 安装 hook 或扩展。
 
-[安装](#安装) · [使用](#使用) · [限制](#限制) · [开发](#开发)
+已验证 **macOS arm64 上的 Tern 0.8.3**。目前仅支持 OMP；其他宿主版本和平台尚未验证。
 
-| 圆点 | 含义 |
+## 读懂圆点
+
+| 圆&#8288;点 | 含义 |
 | --- | --- |
-| 蓝色 | OMP pane 正在运行 |
-| 绿色 | 存在原生未查看提醒，通常来自运行完成 |
-| 黄色 | OMP pane 等待输入或确认 |
-| 红色 | 失败、错误或非零退出后，仍有原生未查看提醒 |
-| 原色 | 没有 OMP 活动或提醒；原先没颜色则不显示圆点 |
+| 蓝&#8288;色 | OMP pane 正在运行 |
+| 绿&#8288;色 | 存在原生未查看提醒，通常来自运行完成 |
+| 黄&#8288;色 | OMP pane 等待输入或确认 |
+| 红&#8288;色 | 失败、错误或非零退出后，仍有原生未查看提醒 |
+| 原&#8288;色 | 没有 OMP 活动或提醒；原先没颜色则不显示圆点 |
 
 同一个 Tab 汇总所有 OMP pane，优先级为 **红 → 黄 → 绿 → 蓝 → 原色**。绿色表示有提醒待查看，不代表任务已通过验收。
 
 ## 安装
 
-需要带插件 CLI 的 Tern，以及能被 Tern 识别的 OMP 会话。通过 URL 安装还需要 Git。插件没有运行依赖，也不需要构建；只有开发检查需要 Node.js。
+需要带插件 CLI 的 Tern，以及能被 Tern 识别的 OMP 会话。通过 URL 安装还需要 Git。插件没有运行依赖，也不需要构建；只有开发检查需要 Node.js。如果 macOS 的 PATH 中没有 `tern`，用 `/Applications/Tern.app/Contents/MacOS/tern` 替换。
 
 ### 从 GitHub 安装
 
@@ -28,13 +36,13 @@ Tern 可以直接从 GitHub 克隆并安装本插件：
 
 ```sh
 tern plugin install https://github.com/yoyooyooo/tern-tab-status.git
-# 等价的 GitHub 简写：
-tern plugin install github.com/yoyooyooo/tern-tab-status
+tern plugin list --json
 ```
 
-URL 安装会把插件复制到 Tern 插件目录，不需要自己维护一份克隆。执行 `tern plugin list --json`，确认 `tern-tab-status` 状态为 `ready`，且没有该插件的问题。如果 macOS 的 PATH 中没有 `tern`，用 `/Applications/Tern.app/Contents/MacOS/tern` 替换。插件位于仓库子目录时，Tern 也接受 `github.com/OWNER/REPO/PATH`。
+确认 `tern-tab-status` 状态为 `ready`，且没有该插件的问题。URL 安装会把插件复制到 Tern 插件目录，不需要自己维护一份克隆。等价的 GitHub 简写是 `tern plugin install github.com/yoyooyooo/tern-tab-status`。
 
-### 从本地源码安装
+<details>
+<summary>从本地源码安装</summary>
 
 在解压或克隆后的仓库根目录执行：
 
@@ -43,7 +51,7 @@ tern plugin link "$PWD"
 tern plugin list --json
 ```
 
-如果 macOS 的 PATH 中没有 `tern`，用 `/Applications/Tern.app/Contents/MacOS/tern` 替换。插件列表应包含 `tern-tab-status`，状态为 `"ready"`，且没有该插件的问题。链接安装直接读取当前目录，请保留目录位置。
+插件列表应包含 `tern-tab-status`，状态为 `"ready"`，且没有该插件的问题。链接安装直接读取当前目录，请保留目录位置。
 
 若希望复制安装、不依赖源码目录位置，执行：
 
@@ -51,11 +59,19 @@ tern plugin list --json
 tern plugin install "$PWD"
 ```
 
-## 使用
+插件位于仓库子目录时，Tern 也接受 `github.com/OWNER/REPO/PATH`。
 
-在一个 Tab 发起 OMP 请求，然后切到另一个 Tab。运行时，原 Tab 显示蓝色；结束后若仍有原生提醒，显示绿色；失败且有提醒时显示红色；等待输入或审批时显示黄色。
+</details>
 
-回到对应 pane，或从 Tern 的 **Needs attention** 跳转过去。Tern 清除原生提醒后，空闲 Tab 恢复原色。有多个分屏时，聚焦一个 pane 不会将其他 pane 的提醒标为已读。等待输入的黄色会保留到 agent 离开 `waiting_input` 状态。
+## 试用
+
+1. 在一个没有待查看提醒的 Tab 中发起 OMP 请求，然后切到另一个 Tab。运行时，原 Tab 显示蓝色。
+2. 等待请求结束。如果 Tern 将该 pane 标为需要查看，Tab 会显示绿色。
+3. 回到该 pane，或从 Tern 的 **Needs attention** 跳转过去。提醒清除后，空闲 Tab 恢复原色。
+
+有多个分屏时，聚焦一个 pane 不会将其他 pane 的提醒标为已读。等待输入的黄色会保留到 agent 离开 `waiting_input` 状态。
+
+## 操作
 
 命令面板提供：
 
