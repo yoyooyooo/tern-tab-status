@@ -7,6 +7,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { statusPixels } from "./status-pixels.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const argv = process.argv.slice(2);
@@ -88,6 +89,9 @@ async function snapshot() {
   action("plugin.tern-status-verification.snapshot");
   const value = JSON.parse(await readFile(join(base, "snapshot.json"), "utf8"));
   assert.equal(value.nonce, nonce, "Observer snapshot hook did not publish the requested fresh state; inspect native plugin errors");
+  const shot = ctl("shot", "status-observation");
+  value.statusPixels = await statusPixels(shot, value.tabs);
+  for (const tab of value.tabs) tab.statusColor = value.statusPixels[tab.id].color;
   return value;
 }
 async function drive(request) {
@@ -263,7 +267,7 @@ async function main() {
   const source = join(base, "source-install");
   await mkdir(source);
   const hashes = {};
-  for (const file of ["plugin.toml", "window.luau", "status.luau", "LICENSE"]) {
+  for (const file of ["plugin.toml", "window.luau", "host.luau", "LICENSE"]) {
     await copyFile(join(root, file), join(source, file));
     hashes[file] = createHash("sha256").update(await readFile(join(source, file))).digest("hex");
   }
@@ -325,44 +329,63 @@ async function main() {
     });
   }
   if (mode === "launch") { summary.result = "passed"; return; }
+  ctl("tabs", "vertical");
   for (const host of ["omp", "pi"]) {
     const target = launched[host];
     await scenario(`${host}-working-completion`, `Send VERIFY_SUCCESS through owned pane ${target.pane}; switch away; view completion`, async record => {
       await drive({ op: "focus", pane: target.pane });
       await send(target.pane, "VERIFY_SUCCESS");
       await drive({ op: "focus", pane: homePane });
-      record.working = await waitPane(`${host} real work is blue`, target.pane, (agent, tab) => agent?.state === "working" && tab?.color === "blue");
+      record.working = await waitPane(`${host} real work is blue`, target.pane, (agent, tab) => agent?.state === "working" && tab?.statusColor === "blue");
       record.workingScreenshot = await capture(`${host}-working`);
-      record.completed = await waitPane(`${host} unseen completion is green`, target.pane, (agent, tab) => agent?.state === "idle" && agent.alert && tab?.color === "green");
+      record.completed = await waitPane(`${host} unseen completion is green`, target.pane, (agent, tab) => agent?.state === "idle" && agent.alert && tab?.statusColor === "green");
       record.completedScreenshot = await capture(`${host}-completion-away`);
       await drive({ op: "focus", pane: target.pane });
-      await waitPane(`${host} viewed completion restores color`, target.pane, (agent, tab) => !agent.alert && !tab?.color);
+      await waitPane(`${host} viewed completion restores color`, target.pane, (agent, tab) => !agent.alert && !tab?.statusColor);
+    });
+    await scenario(`${host}-focused-completion`, `Finish success and failure while viewing ${target.pane}; leave, reload, then finish unseen`, async record => {
+      await drive({ op: "focus", pane: target.pane });
+      record.results = [];
+      for (const request of ["VERIFY_SUCCESS", "VERIFY_FAILURE"]) {
+        await send(target.pane, request);
+        await waitPane(`${host} focused work is blue`, target.pane, (agent, tab) => agent?.state === "working" && tab?.statusColor === "blue");
+        const completed = await waitPane(`${host} focused result restores color immediately`, target.pane, (agent, tab, value) => agent?.state === "idle" && !tab?.statusColor && value.focused === target.pane);
+        const screenshot = await capture(`${host}-focused-${request === "VERIFY_SUCCESS" ? "success" : "failure"}`);
+        await drive({ op: "focus", pane: homePane });
+        await waitPane(`${host} leaving keeps the viewed result read`, target.pane, (agent, tab) => agent?.state === "idle" && !tab?.statusColor);
+        command(ternBin, ["plugin", "reload"]);
+        await waitPane(`${host} reload does not resurrect viewed attention`, target.pane, (agent, tab) => agent?.state === "idle" && !tab?.statusColor);
+        record.results.push({ request, completed, screenshot, afterReload: await snapshot() });
+        await drive({ op: "focus", pane: target.pane });
+      }
+      await send(target.pane, "VERIFY_SUCCESS");
+      await drive({ op: "focus", pane: homePane });
+      record.nextUnread = await waitPane(`${host} next unseen result is green`, target.pane, (agent, tab) => agent?.state === "idle" && agent.alert && tab?.statusColor === "green");
+      await drive({ op: "focus", pane: target.pane });
+      await waitPane(`${host} next result restores color when viewed`, target.pane, (agent, tab) => !agent.alert && !tab?.statusColor);
     });
     await scenario(`${host}-failure`, `Send VERIFY_FAILURE through owned pane ${target.pane}; switch away; view failure`, async record => {
       await drive({ op: "focus", pane: target.pane });
       await send(target.pane, "VERIFY_FAILURE");
       await drive({ op: "focus", pane: homePane });
-      record.failed = await waitPane(`${host} unseen error is red`, target.pane, (agent, tab) => agent?.state === "idle" && agent.alert && tab?.color === "red");
+      record.failed = await waitPane(`${host} unseen error is red`, target.pane, (agent, tab) => agent?.state === "idle" && agent.alert && tab?.statusColor === "red");
       record.failureScreenshot = await capture(`${host}-failure-away`);
       await drive({ op: "focus", pane: target.pane });
-      await waitPane(`${host} viewed failure restores color`, target.pane, (agent, tab) => !agent.alert && !tab?.color);
+      await waitPane(`${host} viewed failure restores color`, target.pane, (agent, tab) => !agent.alert && !tab?.statusColor);
     });
     await scenario(`${host}-confirmation`, `Submit /verify-confirm in actual ${host} UI; retain yellow while focused; dismiss`, async record => {
       await drive({ op: "focus", pane: target.pane });
       await send(target.pane, "/verify-confirm");
-      record.waitingFocused = await waitPane(`${host} actual focused confirmation is yellow`, target.pane, (agent, tab, value) => agent?.state === "waiting_input" && tab?.color === "yellow" && value.focused === target.pane);
+      record.waitingFocused = await waitPane(`${host} actual focused confirmation is yellow`, target.pane, (agent, tab, value) => agent?.state === "waiting_input" && tab?.statusColor === "yellow" && value.focused === target.pane, 5000);
       record.confirmationOpened = (await providerEvents()).findLast(event => event.host === host && event.event === "confirm_open");
       assert.ok(record.confirmationOpened, "Actual confirmation must publish an open receipt");
       record.waitingScreenshot = await capture(`${host}-confirmation-focused`);
       await drive({ op: "focus", pane: homePane });
       await drive({ op: "focus", pane: target.pane });
-      await waitPane(`${host} viewing must not clear input wait`, target.pane, (agent, tab) => agent?.state === "waiting_input" && tab?.color === "yellow");
+      await waitPane(`${host} viewing must not clear input wait`, target.pane, (agent, tab) => agent?.state === "waiting_input" && tab?.statusColor === "yellow");
       command(ternBin, ["send", String(target.pane), "keys", "esc"]);
-      record.dismissed = await waitPane(`${host} dismissed confirmation leaves waiting state`, target.pane, (agent, tab) => agent?.state === "idle" && tab?.color !== "yellow");
+      record.dismissed = await waitPane(`${host} dismissed confirmation restores color while viewed`, target.pane, (agent, tab) => agent?.state === "idle" && !tab?.statusColor);
       await until(`${host} actual dismissed confirmation receipt`, async () => (await providerEvents()).some(event => event.host === host && event.event === "confirm_closed" && event.time >= record.confirmationOpened.time));
-      await drive({ op: "focus", pane: homePane });
-      await drive({ op: "focus", pane: target.pane });
-      await waitPane(`${host} viewing new dismissal attention restores color`, target.pane, (agent, tab) => !agent.alert && !tab?.color);
     });
   }
   await scenario("mixed-pane-attention", "Move Pi beside OMP; complete both away; view one pane at a time", async record => {
@@ -373,55 +396,48 @@ async function main() {
     await drive({ op: "focus", pane: homePane });
     record.bothUnread = await until("both real pane completions unseen", async () => {
       const value = await snapshot();
-      return [omp, pi].every(pane => agent(value, pane)?.state === "idle" && agent(value, pane)?.alert) && tab(value, paneTab(value, omp))?.color === "green" && value;
+      return [omp, pi].every(pane => agent(value, pane)?.state === "idle" && agent(value, pane)?.alert) && tab(value, paneTab(value, omp))?.statusColor === "green" && value;
     });
     await drive({ op: "focus", pane: omp });
-    record.onlyPiUnread = await until("focusing OMP retains Pi attention", async () => { const value = await snapshot(); return !agent(value, omp)?.alert && agent(value, pi)?.alert && tab(value, paneTab(value, omp))?.color === "green" && value; });
+    record.onlyPiUnread = await until("focusing OMP retains Pi attention", async () => { const value = await snapshot(); return !agent(value, omp)?.alert && agent(value, pi)?.alert && tab(value, paneTab(value, omp))?.statusColor === "green" && value; });
     record.unreadScreenshot = await capture("mixed-pane-one-unread");
     await send(omp, "VERIFY_SUCCESS");
     record.unreadOverWorking = await until("green unread Pi outranks blue OMP work", async () => {
       const value = await snapshot();
-      return agent(value, omp)?.state === "working" && agent(value, pi)?.alert && tab(value, paneTab(value, omp))?.color === "green" && value;
+      return agent(value, omp)?.state === "working" && agent(value, pi)?.alert && tab(value, paneTab(value, omp))?.statusColor === "green" && value;
     });
-    await until("focused OMP work completes while Pi remains unread", async () => {
+    record.focusedCompletionWithPiUnread = await until("focused OMP completion retains only Pi's unread dot", async () => {
       const value = await snapshot();
-      return agent(value, omp)?.state === "idle" && agent(value, pi)?.alert;
+      return agent(value, omp)?.state === "idle" && agent(value, pi)?.alert && value.focused === omp && tab(value, paneTab(value, omp))?.statusColor === "green" && value;
     });
-    await drive({ op: "focus", pane: homePane });
-    await drive({ op: "focus", pane: omp });
-    record.onlyPiUnreadAfterNewCompletion = await waitPane("viewing new OMP completion retains Pi attention", omp, (item, tab, value) => !item.alert && agent(value, pi)?.alert && tab?.color === "green");
     await drive({ op: "focus", pane: pi });
-    await waitPane("viewing both panes restores tab", pi, (_agent, tab) => !tab?.color);
+    await waitPane("viewing both panes restores tab", pi, (_agent, tab) => !tab?.statusColor);
   });
   await scenario("mixed-pane-priority", "Run OMP while Pi waits; fail OMP away; view failure; dismiss Pi confirmation", async record => {
     const omp = launched.omp.pane, pi = launched.pi.pane;
     await drive({ op: "focus", pane: pi });
     await send(pi, "/verify-confirm");
-    await waitPane("Pi confirmation established in mixed tab", pi, (agent, tab) => agent?.state === "waiting_input" && tab?.color === "yellow");
+    await waitPane("Pi confirmation established in mixed tab", pi, (agent, tab) => agent?.state === "waiting_input" && tab?.statusColor === "yellow");
     const confirmationOpened = (await providerEvents()).findLast(event => event.host === "pi" && event.event === "confirm_open");
     assert.ok(confirmationOpened, "Mixed confirmation must publish an open receipt");
     await send(omp, "VERIFY_FAILURE");
     await drive({ op: "focus", pane: homePane });
     record.waitingOverWorking = await until("yellow outranks real blue work", async () => {
       const value = await snapshot();
-      return agent(value, omp)?.state === "working" && agent(value, pi)?.state === "waiting_input" && tab(value, paneTab(value, omp))?.color === "yellow" && value;
+      return agent(value, omp)?.state === "working" && agent(value, pi)?.state === "waiting_input" && tab(value, paneTab(value, omp))?.statusColor === "yellow" && value;
     });
     record.yellowScreenshot = await capture("mixed-priority-yellow");
     record.failureOverWaiting = await until("red failure outranks yellow wait", async () => {
       const value = await snapshot();
-      return agent(value, omp)?.state === "idle" && agent(value, omp)?.alert && agent(value, pi)?.state === "waiting_input" && tab(value, paneTab(value, omp))?.color === "red" && value;
+      return agent(value, omp)?.state === "idle" && agent(value, omp)?.alert && agent(value, pi)?.state === "waiting_input" && tab(value, paneTab(value, omp))?.statusColor === "red" && value;
     });
     record.redScreenshot = await capture("mixed-priority-red");
     await drive({ op: "focus", pane: omp });
-    await waitPane("viewing failure leaves other pane yellow", omp, (agent, tab) => !agent.alert && tab?.color === "yellow");
+    await waitPane("viewing failure leaves other pane yellow", omp, (agent, tab) => !agent.alert && tab?.statusColor === "yellow");
     await drive({ op: "focus", pane: pi });
     command(ternBin, ["send", String(pi), "keys", "esc"]);
-    record.dismissed = await waitPane("mixed confirmation leaves waiting state", pi, (agent, tab) => agent?.state === "idle" && tab?.color !== "yellow");
+    record.dismissed = await waitPane("mixed confirmation restores color while viewed", pi, (agent, tab) => agent?.state === "idle" && !tab?.statusColor);
     await until("mixed actual dismissed confirmation receipt", async () => (await providerEvents()).some(event => event.host === "pi" && event.event === "confirm_closed" && event.time >= confirmationOpened.time));
-    await drive({ op: "focus", pane: homePane });
-    await drive({ op: "focus", pane: omp });
-    await drive({ op: "focus", pane: pi });
-    await waitPane("viewing new mixed completion attention restores tab", pi, (_agent, tab, value) => !agent(value, omp)?.alert && !agent(value, pi)?.alert && !tab?.color);
   });
   await scenario("manual-pause-resume-reload", "Set purple; run delayed work; pause/resume via palette; change manual color; reload copied plugin", async record => {
     const pane = launched.omp.pane;
@@ -435,19 +451,35 @@ async function main() {
     await drive({ op: "color", tab: targetTab, color: "purple" });
     await send(pane, "VERIFY_LONG");
     await drive({ op: "focus", pane: homePane });
-    await waitPane("manual original becomes blue while working", pane, (agent, tab) => agent?.state === "working" && tab?.color === "blue");
+    await waitPane("manual original becomes blue while working", pane, (agent, tab) => agent?.state === "working" && tab?.statusColor === "blue");
     await palette("Tern Tab Status: Pause and Restore Tab Colors");
-    record.paused = await waitPane("pause restores purple", pane, (_agent, tab) => tab?.color === "purple");
+    record.paused = await waitPane("pause exposes purple", pane, (_agent, tab) => tab?.statusColor === "purple" && tab?.color === "purple");
     await palette("Tern Tab Status: Resume");
-    await waitPane("resume reapplies blue", pane, (agent, tab) => agent?.state === "working" && tab?.color === "blue");
+    await waitPane("resume reapplies blue", pane, (agent, tab) => agent?.state === "working" && tab?.statusColor === "blue");
     await drive({ op: "color", tab: targetTab, color: "orange" });
-    await waitPane("manual orange captured during work", pane, (agent, tab) => agent?.state === "working" && tab?.color === "blue");
+    await waitPane("manual orange remains under blue status", pane, (agent, tab) => agent?.state === "working" && tab?.statusColor === "blue" && tab?.color === "orange");
     command(ternBin, ["plugin", "reload"]);
-    await waitPane("reload keeps real working state", pane, (agent, tab) => agent?.state === "working" && tab?.color === "blue");
+    await waitPane("reload keeps real working state", pane, (agent, tab) => agent?.state === "working" && tab?.statusColor === "blue");
     record.reloaded = await snapshot();
-    await waitPane("completion after reload is green", pane, (agent, tab) => agent?.state === "idle" && agent.alert && tab?.color === "green");
+    await waitPane("completion after reload is green", pane, (agent, tab) => agent?.state === "idle" && agent.alert && tab?.statusColor === "green", 60000);
     await drive({ op: "focus", pane });
-    await waitPane("manual orange restored after viewing", pane, (agent, tab) => !agent.alert && tab?.color === "orange");
+    await waitPane("manual orange exposed after viewing", pane, (agent, tab) => !agent.alert && tab?.statusColor === "orange" && tab?.color === "orange");
+  });
+  ctl("tabs", "horizontal");
+  await scenario("horizontal-mixed-priority", "Observe Pi waiting and OMP failure in a horizontal shared tab", async record => {
+    const omp = launched.omp.pane, pi = launched.pi.pane;
+    await drive({ op: "focus", pane: pi });
+    await send(pi, "/verify-confirm");
+    await waitPane("horizontal Pi waits yellow", pi, (agent, tab) => agent?.state === "waiting_input" && tab?.statusColor === "yellow");
+    await send(omp, "VERIFY_FAILURE");
+    await drive({ op: "focus", pane: homePane });
+    record.failed = await waitPane("horizontal failure outranks waiting", omp, (agent, tab) => agent?.state === "idle" && agent.alert && tab?.statusColor === "red");
+    record.failureScreenshot = await capture("horizontal-priority-red");
+    await drive({ op: "focus", pane: omp });
+    await waitPane("horizontal read leaves Pi yellow", omp, (_agent, tab) => tab?.statusColor === "yellow");
+    await drive({ op: "focus", pane: pi });
+    command(ternBin, ["send", String(pi), "keys", "esc"]);
+    await waitPane("horizontal viewed result exposes manual orange", pi, (agent, tab) => agent?.state === "idle" && tab?.statusColor === "orange" && tab?.color === "orange");
   });
   summary.result = summary.cases.every(record => record.result === "passed") ? "passed" : "failed";
   if (summary.result !== "passed") process.exitCode = 1;

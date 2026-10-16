@@ -20,25 +20,25 @@ assert.equal(field('version'), pkg.version);
 assert.equal(lock.packages[''].version, pkg.version);
 assert.equal(lock.packages[''].license, pkg.license);
 assert.equal(pkg.private, true, 'npm is development tooling, not plugin distribution');
+assert.equal(field('host'), 'host.luau');
+assert.equal(field('window'), 'window.luau');
+await stat(path.join(root, field('host')));
 await stat(path.join(root, field('window')));
 
-const statusSource = await text('status.luau');
-const windowSource = await text('window.luau');
+const hostSource = await text(field('host'));
+const windowSource = await text(field('window'));
 const behaviorSource = await text('tests/behavior.luau');
 const vm = await LuauState.createAsync();
 try {
-    vm.loadstring(statusSource, 'status.luau', true);
-    vm.loadstring(windowSource, 'window.luau', true);
+    vm.loadstring(hostSource, field('host'), true);
+    vm.loadstring(windowSource, field('window'), true);
     const run = vm.loadstring(`
-local status = (function()
-${statusSource}
-end)()
-local function load_plugin(api)
+local function load_host_plugin(api)
     local tern = api
-    local function require(name)
-        assert(name == "./status", "Unexpected module " .. name)
-        return status
-    end
+${hostSource}
+end
+local function load_window_plugin(api)
+    local tern = api
 ${windowSource}
 end
 ${behaviorSource}

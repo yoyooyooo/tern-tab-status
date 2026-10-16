@@ -2,5 +2,6 @@ schema = 1
 id = "tern-tab-status"
 name = "Tern Tab Status"
 version = "0.2.0"
-description = "Mirror OMP and pi activity in native tab color dots, with separate launch commands."
+description = "Show OMP and pi activity in tab status dots, with separate launch commands."
 window = "window.luau"
+host = "host.luau"

@@ -22,10 +22,10 @@ node scripts/verify-native.mjs --doctor
 node scripts/verify-native.mjs --case launch --out /tmp/tern-launch-proof-$(date +%s)
 ```
 
-The helper launches a fresh isolated native daemon/window and installs a copied runtime. It selects a distinctive default `omp --model preserved-default` with `split` placement, then invokes `ctl palette '"New OMP Tab"'` or `'"New Pi Tab"'`, then `ctl key enter`. Each created native Agent Block must be idle, focused and in a new tab at the original pane's cwd. The isolated provider must report extension initialization under the chosen host with zero requests. Native settings before and after must match for `agent_command` and `agent_placement`.
+The helper launches a fresh isolated native daemon/window and installs `plugin.toml`, `host.luau`, `window.luau` and `LICENSE`; the former `status.luau` is excluded. It selects a distinctive default `omp --model preserved-default` with `split` placement, invokes `ctl palette '"New OMP Tab"'` or `'"New Pi Tab"'`, then `ctl key enter`. Each real Agent Block must be idle, focused and in a new tab at the original pane's cwd. The provider reports extension initialization under the chosen host with zero requests. Native `agent_command` and `agent_placement` settings must match before/after. Pause must not affect either launcher.
 
 Inspect `launch-omp` and `launch-pi` in `summary.json`, the provider receipts, `palette.jsonl`, and both screenshot paths. The helper automatically cleans up; require recorded exit proof and retained screenshots. The full runner includes the same cases.
 
 ## Gotchas
 
-The private host filter appends test flags/extensions to plain `omp` and `pi`; production commands remain plain. A shell prompt containing a typed `pi` command does not prove an Agent Block was created. No source-text assertion substitutes for actual host initialization. Large daily native IDs may be unaddressable in Tern 0.8.3 SDK operations; never reuse daily routing environment or infer compatibility from a fresh daemon. All attempts retain evidence, including failures.
+The private host filter appends test flags/extensions to plain `omp` and `pi`; production launchers remain unchanged. A typed shell `pi` command does not prove an Agent Block exists, and a source-text assertion cannot prove initialization. Never reuse daily routing environment. Full native pane strings now target status CSS independently of SDK tab-color addressing; fresh-daemon launch proof still does not establish every daily lifecycle or legacy recovery. Retain evidence for failures too.

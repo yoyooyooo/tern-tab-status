@@ -1,17 +1,18 @@
 # Preserve manual colors and pause synchronization
 
-Keep chosen native tab colors while status colors temporarily show agent work, and suspend/resume the plugin from the palette.
+Keep chosen native tab colors while CSS status temporarily overlays agent work, and suspend/resume styling from the palette.
 
 ## Sub-features
 
-- A manual purple tab becomes blue while real work runs.
-- Pause restores purple; Resume reapplies the current status.
-- A manual orange change observed during work becomes the next restored color.
-- Reloading a copied installation preserves the saved original/manual color and current status.
+- A native purple tab shows blue status pixels during real work while `tab.color` stays purple.
+- Pause hides status styling and reveals purple; Resume overlays the current status again.
+- A manual orange choice during work remains the real native color and is revealed when status clears.
+- Reload preserves native manual colors, persisted read/pause state and current status styling.
+- Old original/applied records restore only while current equals applied, clear only after observed success, preserve newer manual colors and remain available for retry after ignored restoration.
 
 ## How to get to it (user POV)
 
-Choose a native tab color, then start work in its OMP/Pi Agent Block. Search **Tern Tab Status: Pause and Restore Tab Colors** or **Tern Tab Status: Resume** in the command palette. Developers updating the copied installation can run `tern plugin reload` after applying changes. Pause before uninstalling or disabling to restore temporary colors.
+Choose a native tab color, then start work in its OMP/Pi Agent Block. Search **Tern Tab Status: Pause and Restore Tab Colors** or **Tern Tab Status: Resume** in the palette. For copied-install updates use `tern plugin reload` after applying changes. Pause before removal to hide status styling and retry old color recovery.
 
 ## Driving it with verify-native
 
@@ -19,10 +20,10 @@ Choose a native tab color, then start work in its OMP/Pi Agent Block. Search **T
 node scripts/verify-native.mjs --out /tmp/tern-colors-proof-$(date +%s)
 ```
 
-The `manual-pause-resume-reload` case uses the native layout color operation on the owned OMP tab to select purple, submits `VERIFY_LONG` to the real host, and switches away. It requires working/blue before invoking Pause through the actual palette. Purple must return. Resume must return to blue. A second native manual color selection changes the saved original to orange; blue must reappear during the same work.
+The `manual-pause-resume-reload` case selects native purple on the owned OMP tab, submits `VERIFY_LONG` and switches away. It requires screenshot `statusColor=blue` while native `tab.color=purple`, then invokes Pause through the palette and requires visible purple with native purple unchanged. Resume returns blue pixels. Selecting orange during that work changes only the real manual color; blue status must still be visible above it. The work fixture runs 45 seconds for the sequence, with a 60-second completion allowance.
 
-The helper reloads plugins through the isolated Tern CLI, observes blue while the real delayed request continues, waits for green completion, and focuses that individual pane. Orange must be restored. Inspect the case's before/after states, paused/reloaded intermediate snapshots, native screenshot and logs. Require a clean runtime-hook scan and process exit receipts after cleanup.
+Reload the isolated copied installation, require blue while real work continues and native orange remains, then observe green completion and focus that pane to reveal orange. Inspect intermediate snapshots/screenshots, pixel status and native colors separately, plus clean hook scan and owned-process exit receipts. Include horizontal/vertical priority with a manual color underneath: native deck animation/stacking contexts must not let manual color cover status.
 
 ## Gotchas
 
-Pause is stored in plugin KV state and affects windows using that same configuration. The helper uses a unique configuration, so the daily instance remains separate. A manual color identical to the currently applied status cannot be distinguished; this case deliberately uses purple and orange. The delayed model response is an external boundary fixture; pause, settings, layout, reload and lifecycle all use real native APIs. Do not edit KV state to manufacture an expected result.
+Pause is shared through plugin KV; the isolated configuration keeps daily state separate. Manual color is independent of status even when both use the same color. The delayed provider is an external fixture; settings, layout, reload and lifecycle use native APIs. Do not edit KV to manufacture manual preservation. Exercise legacy records separately through a controlled fixture, retaining unresolved records after ignored color calls. Large IDs are a known SDK boundary, not proof that every recovery fails; selected daily old-record clears have succeeded. See [current evidence](../../../../docs/readiness.md#current-css-cutover-evidence).
