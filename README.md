@@ -13,21 +13,21 @@
 <p align="center">
   <img src="./docs/images/tab-status-sidebar.png" width="360" alt="Tern's vertical sidebar with blue, green, yellow, and red status dots, plus an idle tab without a dot.">
   <br>
-  <sub>Session status demo in Tern 0.8.3.</sub>
+  <sub>Historical session status demo in Tern 0.8.3.</sub>
 </p>
 
-When OMP and pi sessions run in different tabs or split panes, switching between them interrupts the work you are following. Tern Tab Status combines each tab's supported agent states into its native color dot. Tab titles stay yours, and neither agent needs a status hook or extension.
+When OMP and pi sessions run in different tabs or split panes, switching between them interrupts the work you are following. Tern Tab Status combines each tab's supported pane states into a right-side status dot in horizontal and vertical tabs. Agent icons stay side by side, tab titles stay yours, and neither agent needs a status hook or extension. Your chosen native tab color remains stored separately and appears when no status takes priority.
 
-Native checks cover selected scenarios on **Tern 0.8.3, OMP 18.11.0, and pi 1.1.0 on macOS arm64**. Large native tab IDs and some OMP confirmation dialogs have known limits described below. Other host versions and platforms are unverified. See the [readiness record](./docs/readiness.md) for results and evidence boundaries.
+Selected native checks cover **Tern 0.8.3–0.8.4, OMP 18.11.0–18.11.1, and pi 1.1.0 on macOS arm64**. The final copied-source CSS run passes 13 of 14 cases, including working, completion, failure, viewed results, Pi confirmation, mixed-pane priority, both tab orientations and manual colors across Pause/Resume/reload. A production daily reload also shows Gmail's blue dot. The sole failed case is OMP standalone confirmation, which remains native idle and unsupported. The host timer-budget mechanism, full daily high-ID lifecycle and restoration of old large-ID color records remain limitations. See the [readiness record](./docs/readiness.md#current-css-cutover-evidence) for versions and evidence. Other platforms are unverified.
 
 ## Read the colors
 
 | Dot | Meaning |
 | --- | --- |
 | Blue | An OMP or pi pane is working |
-| Green | Native attention remains, usually after completion |
+| Green | An unseen native result needs attention, usually after completion |
 | Yellow | An OMP or pi pane reports `waiting_input` |
-| Red | Native attention remains after a failure, error, or nonzero exit |
+| Red | An unseen failure, error, or nonzero exit needs attention |
 | Original color | No supported agent activity or attention; no dot if the tab had no color |
 
 A tab combines its OMP and pi panes, in this priority order: **red → yellow → green → blue → original color**. A green dot means attention is pending, not that the task passed review.
@@ -73,11 +73,11 @@ For plugins in a repository subdirectory, Tern also accepts `github.com/OWNER/RE
 
 1. Search `new` in the command palette, then choose **New OMP Tab** or **New Pi Tab** in the **Agents** group. Send a request, then switch to another tab. The first tab shows blue while it works.
 2. Let the request finish. If Tern marks the pane as needing attention, the tab shows green.
-3. Return to that pane, or use Tern's **Needs attention** view. Once its attention clears, the idle tab returns to its original color.
+3. Return to that pane, or use Tern's **Needs attention** view. Viewing its result restores the idle tab's original color.
 
-With split panes, focusing one pane does not acknowledge the others. Input waits remain yellow until the agent leaves `waiting_input`.
+With split panes, focusing one pane does not acknowledge the others. Input waits remain yellow until the agent leaves native `waiting`; working stays blue even when focused. Overlapping dots show the highest-priority state.
 
-Tern can raise new completion or confirmation-end attention while a pane stays focused. If its dot remains, switch to another pane and return to acknowledge that attention through Tern.
+Results that arrive while their pane is focused are already viewed, so completion or failure reveals the native manual color immediately. Leaving the pane or reloading the plugin does not bring back that result's dot. The plugin persists per-pane read markers without clearing Tern's native attention; a later result that arrives while away can show green or red again. Read markers suppress only native `done`, `bell`, and `failed`, never `working` or `waiting`.
 
 ## Controls
 
@@ -85,20 +85,20 @@ The command palette includes:
 
 - **New OMP Tab** (Agents): open an OMP Agent Block in a new tab at the current directory.
 - **New Pi Tab** (Agents): open a pi Agent Block in a new tab at the current directory.
-- **Tern Tab Status: Pause and Restore Tab Colors**: restore saved tab colors and suspend status colors.
-- **Tern Tab Status: Resume**: enable status colors again.
+- **Tern Tab Status: Pause and Restore Tab Colors**: hide status styling, reveal native manual colors, and retry restoration of legacy saved colors.
+- **Tern Tab Status: Resume**: enable status styling again.
 
 The launch commands run `omp` and `pi` respectively, without an initial prompt. They preserve the configured default Agent command and placement, so the ordinary **New agent block** action continues to use both. Tern 0.8.3 requires briefly selecting the command and `new_tab` placement during synchronous creation; the plugin restores both preferences immediately, including when creation fails. Launching still works while status colors are paused.
 
 Both commands appear in the command palette and can be assigned keys in Tern's Keyboard settings. Their action IDs are `plugin.tern-tab-status.new_omp_tab` and `plugin.tern-tab-status.new_pi_tab`.
 
-Synchronization polls direct metadata from `cx.agents:list()` every 750 ms while a window is open. The snapshot supplies agent state, tab, focus, and native attention without a separate pane lookup for each agent. A bounded `omp.session` descriptor query remains an identification fallback. Focus, title, pane, tab, command, and completion events request an earlier refresh. Only color changes are written. A manual tab color observed during activity becomes the next color to restore.
+The host module publishes full native pane IDs as strings when its roster changes, on shell lifecycle events and a 750 ms fallback poll. The window module uses those exact IDs to identify supported panes and build CSS targeting native `.tn-dk-c[data-pane][data-st]` elements. Native state changes drive the dot directly, without production `agents:list()` polling or writing status into `tab.color`. Direct `omp`/`pi` executable basenames are recognized; shell-hosted OMP uses a bounded `omp.session` descriptor query (one node, depth one, 128 characters). Window start, pane/tab, command, directory and title events synchronize identification and shared pause directly; focus and completion events update persisted read markers. The timer supplements those events rather than dispatching them. Paused refreshes skip identification. Manual colors remain real native tab colors throughout work, Pause, Resume and reload.
 
 ### Update or uninstall
 
 For a linked installation, update the source and run `tern plugin reload`. For a copied installation, repeat the original `tern plugin install` command with `--force`. A GitHub installation updates with `tern plugin install https://github.com/yoyooyooo/tern-tab-status.git --force`; a local copy updates with `tern plugin install "$PWD" --force` from the updated source directory. Updates are manual. `--force` replaces copied installations only; to replace a linked installation with a copy, pause, unlink, then install.
 
-Before disabling, unlinking, or removing the plugin, run **Pause and Restore Tab Colors** so temporary status colors are restored. Then use the command for your installation:
+Before disabling, unlinking, or removing the plugin, run **Pause and Restore Tab Colors** to hide status styling and retry any legacy restoration. Then use the command for your installation:
 
 ```sh
 tern plugin unlink tern-tab-status
@@ -106,22 +106,23 @@ tern plugin unlink tern-tab-status
 tern plugin remove tern-tab-status
 ```
 
-Pause is persisted. Run **Resume** after reinstalling if status colors remain paused. Saved colors, enabled state, and completion results live in Tern's `plugin-data/tern-tab-status/kv.json` under its configuration directory. Unlinking does not erase that state.
+Pause is persisted. Run **Resume** after reinstalling if status dots remain paused. Enabled state, pane IDs and read markers live in Tern's `plugin-data/tern-tab-status/kv.json` under its configuration directory. Unlinking does not erase that state. Older versions also saved original/applied tab colors. On upgrade, restoration writes the saved original only if the current native color still equals the old applied color, and clears that record only after observing successful restoration. A different current color is preserved and its obsolete record is discarded. Large-ID SDK color failures can leave matching old records unresolved; this does not block the new status dot.
 
 ## Limitations
 
 - One dot shows only the highest-priority state. Use **Needs attention** and individual panes for details.
-- Read/unread behavior follows Tern's pane attention flag. The plugin does not maintain a message unread count or acknowledge attention itself.
-- Green covers native attention generally; it is not a separate record of successful completion. A completion already acknowledged by Tern may never show green.
-- OMP is recognized by its executable name or a bounded `omp.session` descriptor fallback; pi by its executable name in Tern's agent list. Use **New Pi Tab** or a pi Agent Block: typing `pi` in an ordinary shell does not enter that list. pi 1.1.0 reports status through OSC 7501; older pi versions are unverified. Custom wrapper executable names are not recognized automatically.
-- Tern 0.8.3 can silently ignore tab-color calls for large native tab IDs in existing daily sessions, even when the SDK accepts the call. Those tabs may show no status, and Pause cannot reliably restore their colors. Fresh-daemon verification with small IDs does not establish compatibility with those tabs. See [known blockers](./docs/readiness.md#known-native-blockers).
-- OMP 18.11.0 standalone extension commands using `ctx.ui.confirm` can show a real blocking dialog while Tern still reports `idle`. That path does not produce yellow and is not verified as an input wait. pi cancellation returns to idle, and its ordinary model/session pickers do not all report input waits. Yellow follows actual native `waiting_input` metadata.
-- Very brief states can pass between refreshes. A manual color identical to the current status color cannot be distinguished from that status color.
-- Pausing affects all windows through shared plugin storage; other windows restore their colors on their next refresh. No window means no window-plugin synchronization.
+- Green/red follow native `done`/`bell`/`failed` state with the plugin's per-pane read markers. Focused results remain read across leaving and reload; the plugin does not count unread messages or clear native attention.
+- Green covers unseen native attention generally; it is not a separate record of successful completion. A completion already viewed may never show green.
+- OMP and pi are recognized by executable basename; shell-hosted OMP additionally supports the bounded `omp.session` fallback. Use **New Pi Tab** or a pi Agent Block for native pi status. Ordinary-shell pi and custom wrapper names have no verified status contract. pi 1.1.0 reports through OSC 7501; older versions are unverified.
+- Exact native pane strings avoid the SDK's low-44-bit color-addressing path for status display. A controlled window on the existing daemon passed 12 real OMP/pi lifecycle observations with native IDs above `2^44`: work, unseen completion/failure, viewing, read persistence across reload and Pi waiting/dismissal. Selected daily panes also resolve and show blue; these samples do not establish universal compatibility. The SDK limitation still affects upgrade restoration of old tab-color records. See the [evidence and limits](./docs/readiness.md#current-css-cutover-evidence).
+- CSS depends on Tern's native tab markup and `data-st` vocabulary, verified in selected Tern 0.8.4 scenarios. Future markup changes can require an update. This exact-pane CSS differs from the rejected historical title-marker experiment and works in both tab orientations within the observed scope.
+- Tern can disable a plugin VM's timers after a callback exceeds its 50 ms wall-clock budget, including native waiting or descheduling. The captured daily failure was in the removed synchronous `cx.agents:list()` path. Native CSS state changes no longer require that poll; lifecycle events now synchronize directly without waiting for a timer callback. Timer loss can still delay changes with no delivered lifecycle event, including cross-window pause in a quiet window. The host mechanism is not repaired. See the [known native blockers](./docs/readiness.md#known-native-blockers).
+- OMP 18.11.0–18.11.1 standalone extension commands using `ctx.ui.confirm` can show a real blocking dialog while Tern still reports `idle`; this remains observed on Tern 0.8.4. That path does not produce yellow and remains unsupported. Pi's blocking confirmation reports `waiting_input` and displays yellow, including while focused; cancellation reveals the native manual color. Ordinary model/session pickers do not all report waits. Yellow follows native `waiting` rendering.
+- Very brief native states can be missed by an observer. Pause is shared through plugin storage; other windows apply it on their next refresh. No window means no window-plugin synchronization.
 
 ## Privacy
 
-The plugin reads Tern's direct agent metadata, a bounded surface descriptor fallback, tab colors, and the default Agent command and placement. It writes tab colors and its own local key/value state. Explicit launch commands ask Tern to start `omp` or `pi` and temporarily select then restore both preferences. It makes no network requests, installs no agent extension, and does not store conversation text. See [SECURITY.md](./SECURITY.md) for reporting and trust boundaries.
+The plugin reads native pane IDs, pane metadata, a bounded surface descriptor for shell-hosted OMP identification, legacy tab-color records, and the default Agent command and placement. It installs local CSS and writes its own local key/value state. Status display does not write tab colors; only upgrade restoration may call the native color API. Explicit launch commands ask Tern to start `omp` or `pi` and temporarily select then restore both preferences. It makes no network requests, installs no agent extension, and does not store conversation text. See [SECURITY.md](./SECURITY.md) for reporting and trust boundaries.
 
 ## Development
 
@@ -132,7 +133,7 @@ npm ci --ignore-scripts
 npm run check
 ```
 
-This compiles and executes the actual Luau modules using a pinned development-only Luau runtime, checks behavior across status transitions and color restoration, and validates local documentation links and the plugin manifest. It does not replace a live Tern smoke run.
+This compiles and executes the actual host/window Luau modules using a pinned development-only Luau runtime, checks identification, CSS priority, read state, legacy restoration and launch behavior, and validates local documentation links and the plugin manifest. It does not replace live Tern acceptance.
 
 For native verification from this checkout:
 
@@ -142,7 +143,7 @@ node scripts/verify-native.mjs --case launch
 node scripts/verify-native.mjs
 ```
 
-The doctor checks prerequisites without opening Tern. The launch case exercises both command-palette launchers. The full run uses an isolated native window, daemon, and offline model provider with real OMP and pi processes. Each run retains `summary.json`, snapshots, screenshots, and process cleanup evidence in its printed output directory. Unsupported scenarios remain failures, not passes. The [verification skill](./.cursor/skills/verify-tern-tab-status/SKILL.md) and [feature map](./.cursor/skills/verify-tern-tab-status/features/README.md) describe prerequisites, navigation, expected results, and evidence.
+The doctor checks prerequisites without opening Tern. The launch case exercises both command-palette launchers. The full run uses an isolated native window, daemon, and offline model provider with real OMP and pi processes. Status assertions use screenshot pixels (`statusColor`); native `tab.color` remains the independent check for manual colors. PNG decoding uses Node's built-in zlib, with no added dependency. Confirmation fixtures identify themselves as automated checks requiring no user action; the runner allows five seconds for native waiting, records unsupported paths as failures, and sends Escape to close dialogs. Each run retains `summary.json`, snapshots, screenshots, and process cleanup evidence in its printed output directory. The [verification skill](./.cursor/skills/verify-tern-tab-status/SKILL.md) and [feature map](./.cursor/skills/verify-tern-tab-status/features/README.md) describe prerequisites, navigation, expected results, and evidence.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for architecture and manual acceptance steps, [CHANGELOG.md](./CHANGELOG.md) for changes, and [the readiness record](./docs/readiness.md) for verification scope. The npm manifest is private development tooling; installation uses Tern, not npm.
 

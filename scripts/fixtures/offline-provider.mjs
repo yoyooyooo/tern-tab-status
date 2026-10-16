@@ -12,7 +12,7 @@ export default function offlineProvider(pi) {
     description: "Open a real blocking confirmation for native status verification",
     handler: async (_args, ctx) => {
       log("confirm_open");
-      const accepted = await ctx.ui.confirm("Tab status verification", "Accept this isolated verification confirmation?");
+      const accepted = await ctx.ui.confirm("自动验收 · 无需操作", "正在验证 Tern 等待状态；脚本会自动关闭此弹框，请勿选择。");
       log("confirm_closed", { accepted });
       ctx.ui.notify(accepted ? "Verification accepted" : "Verification dismissed", "info");
     },
@@ -28,7 +28,7 @@ export default function offlineProvider(pi) {
       const lastUser = [...context.messages].reverse().find(message => message.role === "user");
       const request = JSON.stringify(lastUser);
       const failed = request.includes("VERIFY_FAILURE");
-      const delay = request.includes("VERIFY_LONG") ? 18000 : 5000;
+      const delay = request.includes("VERIFY_LONG") ? 45000 : 5000;
       const output = {
         role: "assistant", content: failed ? [] : [{ type: "text", text: "VERIFIED_OFFLINE_SUCCESS" }],
         api: model.api, provider: model.provider, model: model.id,
