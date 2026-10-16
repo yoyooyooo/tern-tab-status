@@ -7,7 +7,7 @@
 </p>
 <p align="center">
   <a href="#install">Install</a> · <a href="#try-it">Try it</a> ·
-  <a href="#read-the-colors">Colors</a> · <a href="#limitations">Limitations</a>
+  <a href="#using-new-pi-tab">New Pi Tab</a> · <a href="#read-the-colors">Colors</a> · <a href="#limitations">Limitations</a>
 </p>
 
 <p align="center">
@@ -34,7 +34,7 @@ A tab combines its OMP and pi panes, in this priority order: **red → yellow �
 
 ## Install
 
-You need Tern with its plugin CLI and OMP or pi available in its shell PATH. Git must be available for URL installation. The plugin has no runtime dependencies or build step. Node.js is only needed for development checks. If `tern` is not on your macOS PATH, use `/Applications/Tern.app/Contents/MacOS/tern` in its place.
+You need Tern with its plugin CLI and OMP or pi available in its shell PATH. Git must be available for URL installation. The plugin itself has no runtime dependencies or build step; Node.js is only needed for its development checks. Agents have their own requirements; see [Using New Pi Tab](#using-new-pi-tab) for pi installation and setup. If `tern` is not on your macOS PATH, use `/Applications/Tern.app/Contents/MacOS/tern` in its place.
 
 ### From GitHub
 
@@ -93,6 +93,27 @@ The launch commands run `omp` and `pi` respectively, without an initial prompt. 
 Both commands appear in the command palette and can be assigned keys in Tern's Keyboard settings. Their action IDs are `plugin.tern-tab-status.new_omp_tab` and `plugin.tern-tab-status.new_pi_tab`.
 
 The host module publishes full native pane IDs as strings when its roster changes, on shell lifecycle events and a 750 ms fallback poll. The window module uses those exact IDs to identify supported panes and build CSS targeting native `.tn-dk-c[data-pane][data-st]` elements. Native state changes drive the dot directly, without production `agents:list()` polling or writing status into `tab.color`. Direct `omp`/`pi` executable basenames are recognized; shell-hosted OMP uses a bounded `omp.session` descriptor query (one node, depth one, 128 characters). Window start, pane/tab, command, directory and title events synchronize identification and shared pause directly; focus and completion events update persisted read markers. The timer supplements those events rather than dispatching them. Paused refreshes skip identification. Manual colors remain real native tab colors throughout work, Pause, Resume and reload.
+
+### Using New Pi Tab
+
+Install pi separately, following its [official setup instructions](https://github.com/earendil-works/pi#getting-started). For an npm installation, pi requires Node.js **22.19 or later**:
+
+```sh
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+```
+
+In a terminal pane inside Tern, check that its shell can find the executable:
+
+```sh
+command -v pi
+pi --version
+```
+
+Search `new` in Tern's command palette and select **Agents → New Pi Tab**. It opens an empty pi Agent Block in the current directory using the `pi` command from Tern's shell PATH. The plugin does not install pi or configure its provider access. For first use with a built-in provider, run `/login` inside pi, then use `/model` to select a model. Existing pi configuration is used; the configured default Agent command and placement are preserved.
+
+Native status has been verified with **pi 1.1.0**, which reports through OSC 7501 without an extra status extension. Use this command or a pi Agent Block for the verified status path; typing `pi` in an ordinary terminal pane has no verified status contract. See [Limitations](#limitations) for waiting and version boundaries.
+
+If **New Pi Tab** is missing, [update the plugin](#update-or-uninstall) and confirm `tern-tab-status` is `ready` with `tern plugin list --json`. For a linked installation, reload after updating the checkout. If the tab opens but pi cannot start, resolve the PATH/version checks above. If pi runs but dots are hidden, check whether status is paused and use **Tern Tab Status: Resume**.
 
 ### Update or uninstall
 
