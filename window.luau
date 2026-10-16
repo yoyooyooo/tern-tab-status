@@ -18,11 +18,16 @@ local BASE = [[
 :is(#sidebar,#tabbar) .tn-dk {position:static;display:flex;align-items:center;gap:2px;width:auto;height:16px;z-index:1;}
 :is(#sidebar,#tabbar) .tn-dk-c {position:static;display:grid;width:13px;height:13px;transform:none;filter:none;animation:none;z-index:auto;}
 :is(#sidebar,#tabbar) .tn-dk-c .tn-dk-g {position:static;width:100%;height:100%;}
+:is(#sidebar,#tabbar) .tn-dk-c[data-st='working']::before {display:none;animation:none;}
+#sidebar .tn-vt .nav-row.working .lbl,#tabbar .tt.working .nm {animation:none;background:none;color:inherit;}
 #sidebar .nav-row {padding-right:24px;}
 #tabbar .tt {padding-right:24px;}
 :is(#sidebar,#tabbar) .tn-tc {position:absolute;right:10px;top:50%;margin-top:-3.5px;z-index:0;}
 #tabbar .tt .fc {display:none;}
 :is(#sidebar,#tabbar) .tn-dk-c[data-st]::after {display:none;right:10px;top:50%;bottom:auto;margin-top:-3.5px;width:7px;height:7px;animation:none;opacity:1;}
+:is(#sidebar,#tabbar) .tn-dk-c[data-st='working']::after {animation:ternTabStatusWorking 2.4s ease-in-out infinite;}
+@keyframes ternTabStatusWorking {0%,100%{background-color:#4c9eff;}50%{background-color:#3065a3;}}
+@media (prefers-reduced-motion:reduce) {:is(#sidebar,#tabbar) .tn-dk-c[data-st='working']::after {animation:none;}}
 ]]
 local function restore_legacy_colors(cx)
     for _, tab in ipairs(cx.session:tabs()) do

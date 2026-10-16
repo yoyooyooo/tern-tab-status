@@ -6,7 +6,7 @@ The two READMEs remain equivalent and cross-linked. The canonical repository, pa
 
 | Area | Current conclusion | Evidence and boundary |
 | --- | --- | --- |
-| Identity and distribution | source `0.2.0`, unreleased | Manifest/development versions remain `0.2.0`; Tern consumes host/window source with no build or runtime dependency. Final runtime source and copied-install SHA-256 hashes match, as recorded below. |
+| Identity and distribution | source `0.2.0`, unreleased | Manifest/development versions remain `0.2.0`; Tern consumes host/window source with no build or runtime dependency. The recorded Tern 0.8.4 copied-install hashes apply to that verification revision; the later Tern 0.9.0 sweep override has separate live evidence below. |
 | Installation and removal | documented | Both READMEs cover URL/shorthand and local link/copy installation, reload/force updates, pause and retained storage. Earlier successful installs below apply to their revisions. |
 | Status and layout | final-source native evidence | Working/completion, focused/read results, failure, Pi waiting, mixed-pane priority and horizontal priority pass in the final copied-source run. Exact-pane CSS differs from rejected title markers. |
 | Manual colors and upgrade | current contract | Status never writes manual `tab.color`. Pause removes styling. Legacy matching original/applied records clear only after restoration readback; newer manual colors are preserved. Large-ID legacy restoration can still fail and retain records. |
@@ -38,7 +38,7 @@ A separate controlled window on the existing daily daemon completed **12 of 12 s
 
 This high-ID check used a new owned window and panes on the existing daemon, not a fresh isolated daemon. The temporary spawn filter routed only that window to isolated agent configuration/session paths and an offline provider; the production plugin remained the linked repository source, with the same host/window hashes below. Two attempts stopped at `ctl tab` failures, including a native 20-second timeout; `/tmp/tern-status-high-id-final-20261016/attempt-before-pi-resume.json` preserves the partial failure. Resuming the remaining Pi observations through `tern focus --window 3 <full-native-pane-id>` passed without changing production runtime. The owned panes/window were closed, provider PIDs `85259`, `87493` and `87785` exited, and the temporary plugin link was moved to Trash and unloaded; cleanup receipts remain at `cleanup.json`. No hook warnings/errors were logged during the observed high-ID window interval. This sample does not establish all daily paths, timer immunity or universal legacy restoration.
 
-Source and copied-install hashes match for all four distribution files; a separate source checksum readback matches these exact bytes:
+At the recorded Tern 0.8.4 cutover verification revision, source and copied-install hashes matched for all four distribution files:
 
 | File | SHA-256 |
 | --- | --- |
@@ -47,9 +47,19 @@ Source and copied-install hashes match for all four distribution files; a separa
 | `window.luau` | `e1dfc4c9de3d73cea6904259f84dd68e114966d9926e160f058cfa61e2d518c0` |
 | `LICENSE` | `399a600d0914d40f12ffd14a82dcc52b9ba40f64d4931a8f83b0ec815e9e56a5` |
 
-`npm run check` compiles the actual host/window modules and passes 23 behavioral scenarios plus 53 local documentation links after adding the bilingual New Pi Tab guide. The current hashes above match `/tmp/tern-status-event-final-20261016/installation.json`; the earlier cutover run retains its own prior hashes. Earlier hosted CI and publication records below do not publish or approve this unreleased source.
+`npm run check` compiles the actual host/window modules and passes 23 behavioral scenarios plus 53 local documentation links after adding the bilingual New Pi Tab guide. The recorded hashes above match `/tmp/tern-status-event-final-20261016/installation.json`; the later sweep override changes `window.luau`. The earlier cutover run retains its own prior hashes. Earlier hosted CI and publication records below do not publish or approve this unreleased source.
 
 Current limits include native markup/version dependence, unsupported OMP confirmation, legacy large-ID restoration and the host timer-budget mechanism. Removing `agents:list()` removes the captured production boundary; direct lifecycle synchronization also removes the dependency on a timer to dispatch those events. Neither change proves timer immunity: a quiet window may still need its fallback poll to notice shared storage changes. Confirmation fixtures explicitly say automatic acceptance/no user action, observe waiting for five seconds and send Escape to dismiss the dialog.
+
+### Tern 0.9.0 running-tab sweep override
+
+Tern 0.9.0 (`56bd59f`) adds the native `tnTabShimmer` title animation and `tnTileGloss` white icon sweep for working tabs. Enabled status CSS now hides only the working icon's `::before` overlay and removes the title animation/background while restoring inherited text color. Selectors cover the horizontal tab bar and vertical sidebar; Pause removes these overrides with the rest of the status styling.
+
+At the initial sweep-only revision, reloading the linked production plugin reported `ready` with no problems. The actual daily vertical window's running labels rendered opaque inherited colors, screenshot pixels retained four blue status dots across 23 visible tabs, and two `tern ctl stats` observations reported no animating elements under `#sidebar` or `#tabbar`, with `frozen: false`. Before/after screenshots are `/Users/yoyo/target/shots/tern/live/before-disable-tab-sweep.png` and `after-disable-tab-sweep.png`, with adjacent layout JSON. `npm run check` passed 23 behavioral scenarios and 53 local links. This was a focused daily vertical-window smoke check; the full lifecycle suite and horizontal appearance were not rerun on Tern 0.9.0.
+
+The subsequent working-dot change adds `ternTabStatusWorking`: a 2.4-second ease-in-out background-color cycle from `#4c9eff` to `#3065a3` and back, without opacity changes, scaling or a halo. Only working dots animate; other states retain static colors and stacking priority. `prefers-reduced-motion: reduce` disables this animation. Keeping the dot opaque prevents the underlying manual tab color from showing through. The native screenshot helper recognizes blue throughout the brightness range while leaving other color comparisons unchanged.
+
+Production reload again reported `ready` with no problems. Live stats showed four animated working-dot pseudo elements and no title shimmer, with `frozen: false`. Screenshots `/Users/yoyo/target/shots/tern/live/working-dot-pulse-1.png` and `working-dot-pulse-2.png` measured the same four dot centers at RGB `[68,141,228]` and `[50,105,169]`; all 25 sampled center pixels per dot classified as blue in both frames. `npm run check` passed 23 behavioral scenarios and 53 local links. The actual daily vertical appearance is verified; reduced-motion behavior, horizontal appearance and the full lifecycle suite were not exercised in this focused check.
 
 ## Historical evidence scope
 

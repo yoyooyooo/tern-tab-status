@@ -62,7 +62,8 @@ export async function statusPixels(shot, tabs) {
       assert.ok(px >= 0 && px < width && py >= 0 && py < height, "Status dot sampling outside screenshot");
       const offset = (py * width + px) * 4;
       for (const [name, rgb] of Object.entries(colors)) {
-        if (rgb.every((channel, i) => Math.abs(channel - pixels[offset + i]) < 12)) matches[name]++;
+        const brightness = name === "blue" ? pixels[offset + 2] / rgb[2] : 1;
+        if (brightness >= 0.6 && brightness <= 1.05 && rgb.every((channel, i) => Math.abs(channel * brightness - pixels[offset + i]) < 12)) matches[name]++;
       }
     }
     let color = Object.keys(colors).find(name => matches[name] >= 10) ?? null;
