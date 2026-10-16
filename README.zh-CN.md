@@ -7,7 +7,7 @@
 </p>
 <p align="center">
   <a href="#安装">安装</a> · <a href="#试用">试用</a> ·
-  <a href="#读懂圆点">圆点含义</a> · <a href="#限制">限制</a>
+  <a href="#使用-new-pi-tab">New Pi Tab</a> · <a href="#读懂圆点">圆点含义</a> · <a href="#限制">限制</a>
 </p>
 
 <p align="center">
@@ -34,7 +34,7 @@ OMP、pi 会话分散在不同 Tab 或分屏里时，来回切换会打断正在
 
 ## 安装
 
-需要带插件 CLI 的 Tern，以及能在其 shell PATH 中找到的 OMP 或 pi。通过 URL 安装还需要 Git。插件没有运行依赖，也不需要构建；只有开发检查需要 Node.js。如果 macOS 的 PATH 中没有 `tern`，用 `/Applications/Tern.app/Contents/MacOS/tern` 替换。
+需要带插件 CLI 的 Tern，以及能在其 shell PATH 中找到的 OMP 或 pi。通过 URL 安装还需要 Git。插件本身没有运行依赖，也不需要构建；只有插件的开发检查需要 Node.js。Agent 有各自的运行要求，pi 的安装与配置见[使用 New Pi Tab](#使用-new-pi-tab)。如果 macOS 的 PATH 中没有 `tern`，用 `/Applications/Tern.app/Contents/MacOS/tern` 替换。
 
 ### 从 GitHub 安装
 
@@ -93,6 +93,27 @@ tern plugin install "$PWD"
 两个命令可在命令面板搜索，也可在 Tern 的 Keyboard 设置中绑定快捷键。动作 ID 分别为 `plugin.tern-tab-status.new_omp_tab`、`plugin.tern-tab-status.new_pi_tab`。
 
 host 模块在 shell 生命周期事件及 750 ms 补漏轮询中检查 pane 名单，变化时发布完整原生 pane ID 字符串。window 模块用精确 ID 识别支持的 pane，并生成指向原生 `.tn-dk-c[data-pane][data-st]` 元素的 CSS。原生状态变化直接驱动圆点，生产运行不再轮询 `agents:list()`，也不把状态写入 `tab.color`。直接运行的 `omp`、`pi` 按可执行文件 basename 识别；shell 承载的 OMP 用有界 `omp.session` 描述查询识别（一个节点、深度一、128 字符）。窗口启动、pane/Tab、命令、目录和标题事件直接同步识别及共享暂停，焦点与完成事件更新持久已读标记；定时器补漏，不再负责派发这些事件的更新。暂停刷新跳过识别。运行、Pause、Resume、重载期间，手动颜色始终保持为真实原生 Tab 颜色。
+
+### 使用 New Pi Tab
+
+pi 需要单独安装，详见其[官方安装说明](https://github.com/earendil-works/pi#getting-started)。通过 npm 安装时，pi 需要 Node.js **22.19 或更高版本**：
+
+```sh
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+```
+
+在 Tern 内的终端 pane 中确认其 shell 能找到可执行文件：
+
+```sh
+command -v pi
+pi --version
+```
+
+在 Tern 命令面板搜索 `new`，选择 **Agents → New Pi Tab**，会使用 Tern shell PATH 中的 `pi` 命令，在当前目录打开空白 pi Agent Block。插件不负责安装 pi 或配置模型服务的访问凭据。首次使用内置服务商时，在 pi 中执行 `/login`，再用 `/model` 选择模型。启动沿用已有 pi 配置，并保留默认 Agent 命令和放置方式。
+
+原生状态已验证 **pi 1.1.0**，通过 OSC 7501 报告，不需要额外的状态扩展。已验证的状态路径是本命令或 pi Agent Block；在普通终端 pane 中直接输入 `pi` 的状态表现尚未验证。等待输入与版本边界见[限制](#限制)。
+
+若找不到 **New Pi Tab**，先[更新插件](#升级与卸载)，用 `tern plugin list --json` 确认 `tern-tab-status` 为 `ready`；链接安装还需在更新源码后重载。若能开 Tab 但 pi 无法启动，先解决上述 PATH 与版本检查。若 pi 已运行但状态圆点被隐藏，检查是否已暂停，并执行 **Tern Tab Status: Resume**。
 
 ### 升级与卸载
 

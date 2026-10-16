@@ -22,6 +22,7 @@
 - Keep both actual palette launchers and their preference-restoration behavior. Earlier Tern 0.8.3–0.8.4 acceptance remains historical evidence, not approval of the new runtime; required unsupported OMP confirmation keeps full native runs nonzero.
 - Synchronize the native roster on host lifecycle events and synchronize window recognition/styles directly on window/pane/tab/command/directory/title events, with 750 ms polling only as fallback. A disabled timer no longer prevents a delivered lifecycle event from updating styles. Add regressions for discovery/shared pause and window-start styling without firing timers.
 - Verify 12 selected real OMP/pi lifecycle observations in a controlled window on the existing daemon with native pane IDs above `2^44`: blue work, green/red unseen results, viewing, read persistence across reload and Pi yellow waiting/dismissal. Preserve the failed `ctl tab` attempt and complete Pi via full-native-ID focus without changing production runtime. This supplements the 13/14 copied-source result and does not resolve OMP confirmation, the host timer mechanism or universal legacy recovery.
+- Add a focused New Pi Tab guide to both READMEs: separate pi installation and Node.js requirements, Tern-shell PATH/version checks, provider/model setup, verified Agent Block status and missing-command troubleshooting.
 
 ## 0.1.0 (Unreleased)
 
