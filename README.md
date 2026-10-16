@@ -32,6 +32,8 @@ Selected native checks cover **Tern 0.8.3–0.8.4, OMP 18.11.0–18.11.1, and pi
 
 A tab combines its OMP and pi panes, in this priority order: **red → yellow → green → blue → original color**. A green dot means attention is pending, not that the task passed review.
 
+While enabled, the plugin also disables Tern 0.9.0's running-tab title shimmer and white icon sweep in both tab orientations. Only the blue working dot gently changes brightness over a 2.4-second cycle; it stays opaque and does not grow or add a halo. Other status dots stay static, and reduced-motion preferences keep the working dot static too. Pause restores Tern's native appearance.
+
 ## Install
 
 You need Tern with its plugin CLI and OMP or pi available in its shell PATH. Git must be available for URL installation. The plugin itself has no runtime dependencies or build step; Node.js is only needed for its development checks. Agents have their own requirements; see [Using New Pi Tab](#using-new-pi-tab) for pi installation and setup. If `tern` is not on your macOS PATH, use `/Applications/Tern.app/Contents/MacOS/tern` in its place.
