@@ -18,7 +18,7 @@ function option(name, fallback) {
   return argv[index + 1];
 }
 const mode = option("--case", "all");
-assert.ok(["all", "launch"].includes(mode), "--case must be all or launch");
+assert.ok(["all", "launch", "sweep"].includes(mode), "--case must be all, launch or sweep");
 const base = option("--out") ? resolve(option("--out")) : await mkdtemp(join(tmpdir(), "tern-tab-status-native-"));
 await mkdir(base, { recursive: true });
 const summaryPath = join(base, "summary.json");
@@ -329,6 +329,59 @@ async function main() {
     });
   }
   if (mode === "launch") { summary.result = "passed"; return; }
+  if (mode === "all" || mode === "sweep") {
+    await scenario("sweep-effects", "Toggle native title/icon sweeps through the palette in both tab orientations; retain dots, pause state and reload preference", async record => {
+      const target = launched.omp;
+      await drive({ op: "focus", pane: target.pane });
+      await send(target.pane, "VERIFY_LONG");
+      await drive({ op: "focus", pane: homePane });
+      await waitPane("sweep scenario has real blue work", target.pane, (agent, tab) => agent?.state === "working" && tab?.statusColor === "blue");
+      record.observations = [];
+      const observe = async (label, enabled) => {
+        const stats = await until(`${label}: native sweep transition`, () => {
+          const value = ctl("stats"), elements = value.animating.elements;
+          const title = elements.some(path => /(?:#sidebar|#tabbar).*?(?:span\.lbl|span\.nm)$/.test(path));
+          const icons = elements.filter(path => /(?:#sidebar|#tabbar).*?\.tn-dk-c\.[^>]+>span$/.test(path)).length;
+          return title === enabled && icons === (enabled ? 2 : 1) && value;
+        }, 5000);
+        const value = await snapshot();
+        const screenshot = await capture(`sweep-${label}`);
+        record.observations.push({ label, enabled, stats, snapshot: value, screenshot });
+        await save();
+        const elements = stats.animating.elements;
+        assert.equal(elements.some(path => /(?:#sidebar|#tabbar).*?(?:span\.lbl|span\.nm)$/.test(path)), enabled, `${label}: title shimmer`);
+        assert.equal(elements.filter(path => /(?:#sidebar|#tabbar).*?\.tn-dk-c\.[^>]+>span$/.test(path)).length, enabled ? 2 : 1, `${label}: icon sweep plus working dot`);
+        assert.equal(tab(value, target.tab)?.statusColor, "blue", `${label}: working dot remains blue`);
+      };
+      for (const orientation of ["vertical", "horizontal"]) {
+        ctl("tabs", orientation);
+        await observe(`${orientation}-default`, true);
+        await palette("Tern Tab Status: Disable Sweep Effects");
+        await observe(`${orientation}-disabled`, false);
+        command(ternBin, ["plugin", "reload"]);
+        await waitPane("reload retains blue working dot", target.pane, (agent, tab) => agent?.state === "working" && tab?.statusColor === "blue");
+        await observe(`${orientation}-reloaded`, false);
+        await palette("Tern Tab Status: Pause and Restore Tab Colors");
+        const paused = await waitPane("Pause removes blue status", target.pane, (agent, tab) => agent?.state === "working" && !tab?.statusColor);
+        const pausedStats = ctl("stats");
+        assert.ok(pausedStats.animating.elements.some(path => /(?:#sidebar|#tabbar).*?(?:span\.lbl|span\.nm)$/.test(path)), "Pause restores native title sweep");
+        record.observations.push({ label: `${orientation}-paused`, stats: pausedStats, snapshot: paused, screenshot: await capture(`sweep-${orientation}-paused`) });
+        await palette("Tern Tab Status: Resume");
+        await observe(`${orientation}-resumed`, false);
+        await palette("Tern Tab Status: Enable Sweep Effects");
+        await observe(`${orientation}-enabled`, true);
+      }
+      command(ternBin, ["plugin", "reload"]);
+      await waitPane("enabled sweep reload retains blue work", target.pane, (agent, tab) => agent?.state === "working" && tab?.statusColor === "blue");
+      await observe("enabled-reloaded", true);
+      await waitPane("sweep work completes", target.pane, agent => agent?.state === "idle", 60000);
+    });
+    if (mode === "sweep") {
+      summary.result = summary.cases.every(record => record.result === "passed") ? "passed" : "failed";
+      if (summary.result !== "passed") process.exitCode = 1;
+      return;
+    }
+  }
   ctl("tabs", "vertical");
   for (const host of ["omp", "pi"]) {
     const target = launched[host];

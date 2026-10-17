@@ -83,7 +83,7 @@ local function runtime(e)
                 self.css_calls += 1
             end,
             on = function(event, fn) self.handlers[event] = fn end,
-            command = function(spec) self.commands[spec.id] = spec.run end,
+            command = function(spec) self.commands[spec.id] = spec end,
             timer = function(ms, fn)
                 local timer = {ms = ms, fn = fn, canceled = false}
                 function timer:cancel() self.canceled = true end
@@ -103,7 +103,11 @@ local function runtime(e)
         timer.fn(self.cx)
     end
     function r:event(name, event) self.handlers[name](event or {}, self.cx) end
-    function r:command(name) self.commands[name](self.cx) end
+    function r:command(name) self.commands[name].run(self.cx) end
+    function r:available(name)
+        local command = assert(self.commands[name], "Unknown command " .. name)
+        return not command.available or command.available(self.cx)
+    end
     function r:add(id, program, event_id)
         local exact = string.format("%.0f", id)
         local pane = {pane = event_id or id, program = program or "omp", focused = false, alert = false}
@@ -298,6 +302,28 @@ test("resume is shared between windows", function()
     second:tick()
     equal(e.store.enabled, true, "Resume persisted")
     assert(first.css ~= "" and second.css ~= "", "Both windows resume styles")
+end)
+
+test("sweep preference is shared, persistent and independent of pause", function()
+    local e = environment()
+    local first, second = runtime(e), runtime(e)
+    equal(first:available("disable_sweep"), true, "Native sweep is enabled by default")
+    equal(first:available("enable_sweep"), false, "No redundant enable action")
+    first:command("disable_sweep")
+    equal(e.store.disable_sweep, true, "Disabled preference persists")
+    equal(second:available("disable_sweep"), false, "Other window sees disabled preference without polling")
+    equal(second:available("enable_sweep"), true, "Other window offers restore")
+    first:command("pause")
+    second:boot()
+    equal(second:available("enable_sweep"), true, "Reload while paused retains disabled preference")
+    first:command("resume")
+    equal(e.store.disable_sweep, true, "Resume does not reset sweep preference")
+    second:command("enable_sweep")
+    equal(e.store.disable_sweep, false, "Enabled preference persists")
+    first:boot()
+    equal(first:available("disable_sweep"), true, "Reload keeps native sweeps enabled")
+    equal(first:available("enable_sweep"), false, "Restore no longer offered")
+    equal(e.store.enabled, true, "Sweep change does not pause status")
 end)
 
 test("new native panes and old OMP shells become eligible on refresh", function()

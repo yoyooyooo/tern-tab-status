@@ -9,6 +9,7 @@ Keep chosen native tab colors while CSS status temporarily overlays agent work, 
 - A manual orange choice during work remains the real native color and is revealed when status clears.
 - Reload preserves native manual colors, persisted read/pause state and current status styling.
 - Old original/applied records restore only while current equals applied, clear only after observed success, preserve newer manual colors and remain available for retry after ignored restoration.
+- Native title/icon sweeps remain enabled by default; Disable/Enable Sweep Effects persists separately from pause and read state. Reload and Pause/Resume preserve that choice without removing blue-dot pulse.
 
 ## How to get to it (user POV)
 
@@ -23,6 +24,8 @@ node scripts/verify-native.mjs --out /tmp/tern-colors-proof-$(date +%s)
 The `manual-pause-resume-reload` case selects native purple on the owned OMP tab, submits `VERIFY_LONG` and switches away. It requires screenshot `statusColor=blue` while native `tab.color=purple`, then invokes Pause through the palette and requires visible purple with native purple unchanged. Resume returns blue pixels. Selecting orange during that work changes only the real manual color; blue status must still be visible above it. The work fixture runs 45 seconds for the sequence, with a 60-second completion allowance.
 
 Reload the isolated copied installation, require blue while real work continues and native orange remains, then observe green completion and focus that pane to reveal orange. Inspect intermediate snapshots/screenshots, pixel status and native colors separately, plus clean hook scan and owned-process exit receipts. Include horizontal/vertical priority with a manual color underneath: native deck animation/stacking contexts must not let manual color cover status.
+
+Run `node scripts/verify-native.mjs --case sweep --out <new-directory>` for the focused `sweep-effects` path. During actual delayed OMP work, observe title/icon animations and blue-dot pixels with default, disabled, reloaded, paused, resumed and restored sweeps in both orientations. Native `stats.animating.elements` exposes element paths, not animation names: the working title and two icon pseudo-elements (sweep plus dot) become one icon pseudo-element (dot only) when disabled. Wait for the rendered transition rather than reading stale pre-update stats. Retain the named screenshots and snapshots for every transition.
 
 ## Gotchas
 

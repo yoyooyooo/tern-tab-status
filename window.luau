@@ -18,10 +18,9 @@ local function supported(cx, pane, exact)
 end
 local BASE = [[
 :is(#sidebar,#tabbar) .tn-dk {position:static;display:flex;align-items:center;gap:2px;width:auto;height:16px;z-index:1;}
+/* Keep wrappers unanimated to prevent split stacking from trapping status beneath manual color; ::before owns the icon sweep. */
 :is(#sidebar,#tabbar) .tn-dk-c {position:static;display:grid;width:13px;height:13px;transform:none;filter:none;animation:none;z-index:auto;}
 :is(#sidebar,#tabbar) .tn-dk-c .tn-dk-g {position:static;width:100%;height:100%;}
-:is(#sidebar,#tabbar) .tn-dk-c[data-st='working']::before {display:none;animation:none;}
-#sidebar .tn-vt .nav-row.working .lbl,#tabbar .tt.working .nm {animation:none;background:none;color:inherit;}
 #sidebar .nav-row {padding-right:24px;}
 #tabbar .tt {padding-right:24px;}
 :is(#sidebar,#tabbar) .tn-tc {position:absolute;right:10px;top:50%;margin-top:-3.5px;z-index:0;}
@@ -30,6 +29,10 @@ local BASE = [[
 :is(#sidebar,#tabbar) .tn-dk-c[data-st='working']::after {animation:ternTabStatusWorking 2.4s ease-in-out infinite;}
 @keyframes ternTabStatusWorking {0%,100%{background-color:#4c9eff;}50%{background-color:#3065a3;}}
 @media (prefers-reduced-motion:reduce) {:is(#sidebar,#tabbar) .tn-dk-c[data-st='working']::after {animation:none;}}
+]]
+local DISABLE_SWEEP = [[
+:is(#sidebar,#tabbar) .tn-dk-c[data-st='working']::before {display:none;animation:none;}
+#sidebar .tn-vt .nav-row.working .lbl,#tabbar .tt.working .nm {animation:none;background:none;color:inherit;}
 ]]
 local function restore_legacy_colors(cx)
     for _, tab in ipairs(cx.session:tabs()) do
@@ -57,6 +60,7 @@ local function sync(cx, sampled)
     local has_pi = false
     if tern.kv.get("enabled") ~= false then
         table.insert(rules, BASE)
+        if tern.kv.get("disable_sweep") == true then table.insert(rules, DISABLE_SWEEP) end
         for _, exact in ipairs(tern.kv.get("native-panes") or {}) do
             local pane = cx.session:pane(exact)
             local program = pane and supported(cx, pane, exact)
@@ -164,4 +168,20 @@ tern.command({id = "resume", title = "Tern Tab Status: Resume", run = function(c
     sync(cx)
     schedule(POLL_MS)
 end})
+tern.command({id = "disable_sweep", title = "Tern Tab Status: Disable Sweep Effects",
+    available = function() return tern.kv.get("disable_sweep") ~= true end,
+    run = function(cx)
+        tern.kv.set("disable_sweep", true)
+        sync(cx)
+        schedule(POLL_MS)
+    end,
+})
+tern.command({id = "enable_sweep", title = "Tern Tab Status: Enable Sweep Effects",
+    available = function() return tern.kv.get("disable_sweep") == true end,
+    run = function(cx)
+        tern.kv.set("disable_sweep", false)
+        sync(cx)
+        schedule(POLL_MS)
+    end,
+})
 schedule(0)

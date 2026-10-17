@@ -31,6 +31,8 @@ Persist each pane's viewed marker across leaving, Pause and reload. `agent_finis
 
 Status styling must not write `tab.color`. Pause removes status CSS, exposing the native manual color; Resume reapplies current status. Window start and pane/tab/command/directory/title events synchronize identification and shared pause directly with their fresh context. Do not defer event work through a timer: Tern can disable timer hooks. The host publishes its roster on command/directory/title/exit events. Both halves also poll every 750 ms for changes without a corresponding event, including shared pause in a quiet window. Paused window refreshes skip pane identification and surface reads. Keep the plugin ID stable because it owns persisted pause/read state and upgrade records.
 
+Keep native title shimmer and the icon's `::before` sweep by default. Only `disable_sweep == true` adds suppression CSS, in the same status sheet so Pause removes it. Do not remove the wrapper's animation/transform/filter reset: it prevents split stacking contexts from covering status dots and does not drive the native sweep. Palette availability reads shared KV directly; only the applicable enable/disable action appears. Persist the preference independently of enabled/pause/read state and apply it through the existing event/poll refresh.
+
 Legacy `tab:<session>:<id>` records are upgrade-only. Restore a saved original only if the observed native color still equals `applied`, then read back actual color before deleting the record. If it differs from `applied`, preserve that manual color and discard the obsolete record. `color_tab` has no success receipt and can silently fail for large IDs: retain a still-matching unresolved record for retry. Do not convert that failure into a success or resume writing status colors.
 
 The former daily failure was captured at synchronous `cx.agents:list()`; that production call has been removed. Tern's 50 ms wall-clock timer mechanism remains: native waiting/descheduling can consume it, and a budget failure can disable timers until reload. OMP states and Pi waiting/result states follow native `data-st` directly; Pi blue also needs asynchronous daemon observations. Lifecycle events synchronize directly even without a timer callback; timer loss can still delay Pi observations and other changes for which no event is delivered. Neither protected calls nor a finite passing sample proves host-level repair. See the [captured evidence and current limits](./docs/readiness.md#known-native-blockers).
@@ -42,6 +44,7 @@ The automated suite uses a fixture and cannot prove host compatibility. Use the 
 ```sh
 node scripts/verify-native.mjs --doctor
 node scripts/verify-native.mjs --case launch
+node scripts/verify-native.mjs --case sweep
 node scripts/verify-native.mjs
 ```
 
@@ -57,6 +60,7 @@ Before shipping a behavior change, include these acceptance observations:
 5. Set a native purple tab color, run OMP, and confirm blue pixels while native `tab.color` remains purple. Pause reveals purple. Resume restores the status overlay; select orange during work and require native `tab.color` to remain orange throughout.
 6. Reload while a status dot is active. Confirm it returns without changing manual orange, then view the result and reveal orange. Exercise upgrade records separately: matching old applied color restores only with observed success; a newer manual color is preserved; an ignored native restoration retains the old record.
 7. Confirm a regular shell tab keeps its own color. Pause before uninstalling the test installation.
+8. Search **Disable Sweep Effects** in the palette during real work, then **Enable Sweep Effects** to restore. Observe title/icon animations and blue-dot pixels in both tab orientations. Reload in both states, and Pause/Resume while disabled: Pause restores native appearance; Resume restores suppression without losing the preference. `--case sweep` runs this focused native path.
 
 Use a separate Tern configuration and daemon socket when automating acceptance so the run does not change personal tabs or attention state. Report Tern version, OS, architecture, scenario, and observed result. Share neutral reproductions rather than conversation logs or plugin storage dumps.
 
