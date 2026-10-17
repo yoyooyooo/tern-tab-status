@@ -18,7 +18,7 @@
 
 OMP、pi 会话分散在不同 Tab 或分屏里时，来回切换会打断正在关注的工作。Tern Tab Status 把每个 Tab 中支持的 pane 状态汇总到横向标签栏和垂直侧栏右侧的状态圆点上。Agent 图标并排保留，标题仍由你控制，两者都不需要安装状态 hook 或扩展。手动选择的原生 Tab 颜色独立保留，在没有更高优先级状态时显示。
 
-部分原生检查覆盖 **macOS arm64 上的 Tern 0.8.3–0.8.4 和 0.9.0–0.9.1、OMP 18.11.0–18.11.1 和 18.11.3，以及 pi 1.1.0**。最新一次在 Tern 0.9.1 上复制安装的 CSS 运行时验收通过 14 项中的 13 项，覆盖运行、完成、失败、已读、Pi 确认等待、混合分屏优先级、横竖标签栏，以及 Pause/Resume/重载期间的手动颜色保留。日常窗口也观察到与三个运行中 pane 对应的蓝点。唯一失败项是 OMP 独立确认框仍报告原生 idle，该路径不支持。宿主定时预算机制、未经测试的日常大 ID 路径和旧版大 ID 原色记录恢复仍有限制。版本与证据见[就绪记录](./docs/readiness.md#current-css-cutover-evidence)。其他平台尚未验证。
+部分原生检查覆盖 **macOS arm64 上的 Tern 0.8.3–0.8.4 和 0.9.0–0.9.2、OMP 18.11.0–18.11.1 和 18.11.3，以及 pi 1.1.0**。最新一次在 Tern 0.9.2 上复制安装的 CSS 运行时验收通过 15 项中的 14 项，覆盖扫光开关、运行、完成、失败、已读、Pi 确认等待、混合分屏优先级、横竖标签栏，以及 Pause/Resume/重载期间的手动颜色保留。日常窗口此前也观察到与三个运行中 pane 对应的蓝点。唯一失败项是 OMP 独立确认框仍报告原生 idle，该路径不支持。宿主定时预算机制、未经测试的日常大 ID 路径和旧版大 ID 原色记录恢复仍有限制。版本与证据见[就绪记录](./docs/readiness.md#current-css-cutover-evidence)。其他平台尚未验证。
 
 ## 读懂圆点
 
@@ -32,7 +32,7 @@ OMP、pi 会话分散在不同 Tab 或分屏里时，来回切换会打断正在
 
 同一个 Tab 汇总其中的 OMP、pi pane，优先级为 **红 → 黄 → 绿 → 蓝 → 原色**。绿色表示有提醒待查看，不代表任务已通过验收。
 
-插件启用时，也会关闭 Tern 0.9.0 在运行中 Tab 上新增的标题渐变扫光和图标白色扫光，横向、纵向标签栏均适用。仅蓝色运行圆点以 2.4 秒周期轻微明暗呼吸，保持不透明，不放大、不加光晕；其他状态圆点保持静止。系统启用“减少动态效果”时，蓝点也保持静止。暂停后恢复 Tern 原生外观。
+默认保留 Tern 运行中 Tab 的标题渐变扫光和图标白色扫光，横向、纵向标签栏均适用。在命令面板搜索 **Tern Tab Status: Disable Sweep Effects** 可同时关闭两者；**Enable Sweep Effects** 恢复扫光。面板只显示当前适用的操作。选择跨重载保存，其他窗口下次刷新时同步。Pause 恢复原生外观但不重置选择，Resume 重新应用选择。蓝色运行圆点独立以 2.4 秒周期轻微明暗呼吸，保持不透明，不放大、不加光晕；其他状态圆点保持静止。系统启用“减少动态效果”时，蓝点也保持静止。
 
 ## 安装
 
@@ -89,10 +89,13 @@ tern plugin install "$PWD"
 - **New Pi Tab**（Agents 分组）：在当前目录新开一个 pi Agent Block Tab。
 - **Tern Tab Status: Pause and Restore Tab Colors**：隐藏状态样式，露出原生手动颜色，并重试旧版原色记录的恢复。
 - **Tern Tab Status: Resume**：重新启用状态样式。
+- **Tern Tab Status: Disable Sweep Effects / Enable Sweep Effects**：切换原生标题和图标扫光，不暂停状态圆点；面板按当前选择显示适用的操作。
 
 两个启动命令分别运行 `omp`、`pi`，不自动发送初始消息，并保留配置中的默认 Agent 命令和放置方式，普通 **New agent block** 仍沿用这两个偏好。Tern 0.8.3 需要在同步创建时短暂选定程序及 `new_tab` 放置方式，插件会立即恢复两个设置，创建失败时也会恢复。暂停状态颜色不影响启动命令。
 
 两个命令可在命令面板搜索，也可在 Tern 的 Keyboard 设置中绑定快捷键。动作 ID 分别为 `plugin.tern-tab-status.new_omp_tab`、`plugin.tern-tab-status.new_pi_tab`。
+
+扫光操作的动作 ID 为 `plugin.tern-tab-status.disable_sweep`、`plugin.tern-tab-status.enable_sweep`。持久化选项 `disable_sweep` 未设置时默认为 `false`；从此前无条件关闭扫光的版本升级后，也会默认保留扫光。
 
 host 模块在 shell 生命周期事件及 750 ms 补漏轮询中检查 pane 名单，变化时发布完整原生 pane ID 字符串。window 模块用精确 ID 识别支持的 pane，并生成指向原生 `.tn-dk-c[data-pane][data-st]` 元素的 CSS。原生状态变化直接驱动圆点，生产运行不再轮询 `agents:list()`，也不把状态写入 `tab.color`。直接运行的 `omp`、`pi` 按可执行文件 basename 识别；shell 承载的 OMP 用有界 `omp.session` 描述查询识别（一个节点、深度一、128 字符）。窗口启动、pane/Tab、命令、目录和标题事件直接同步识别及共享暂停，焦点与完成事件更新持久已读标记；定时器补漏，不再负责派发这些事件的更新。暂停刷新跳过识别。运行、Pause、Resume、重载期间，手动颜色始终保持为真实原生 Tab 颜色。
 
@@ -131,7 +134,7 @@ tern plugin unlink tern-tab-status
 tern plugin remove tern-tab-status
 ```
 
-暂停状态会持久保存。重新安装后若没有状态圆点，请执行 **Resume**。启用状态、pane ID 和已读标记保存在 Tern 配置目录下的 `plugin-data/tern-tab-status/kv.json`；取消链接不会擦除这些状态。旧版还保存了原色/已应用颜色记录。升级仅在当前原生颜色仍等于旧 applied 色时写回原色，且实际观察到恢复成功后才清除记录。当前颜色已不同时，保留它并丢弃过时记录。大 ID 的 SDK 颜色调用失败可能让匹配的旧记录继续保留；这不阻止新状态点显示。
+暂停状态和扫光选择会持久保存。重新安装后若没有状态圆点，请执行 **Resume**。启用状态、`disable_sweep`、pane ID 和已读标记保存在 Tern 配置目录下的 `plugin-data/tern-tab-status/kv.json`；取消链接不会擦除这些状态。旧版还保存了原色/已应用颜色记录。升级仅在当前原生颜色仍等于旧 applied 色时写回原色，且实际观察到恢复成功后才清除记录。当前颜色已不同时，保留它并丢弃过时记录。大 ID 的 SDK 颜色调用失败可能让匹配的旧记录继续保留；这不阻止新状态点显示。
 
 ## 限制
 
@@ -165,8 +168,11 @@ npm run check
 ```sh
 node scripts/verify-native.mjs --doctor
 node scripts/verify-native.mjs --case launch
+node scripts/verify-native.mjs --case sweep
 node scripts/verify-native.mjs
 ```
+
+sweep 场景在真实 OMP 运行期间，通过命令面板执行 Disable/Enable Sweep Effects，覆盖横向、纵向标签栏、重载及 Pause/Resume。它保留原生动画路径和截图，并检查运行圆点始终为蓝色。
 
 doctor 仅检查前置条件，不打开 Tern；launch 场景执行两个命令面板启动器；完整验证使用隔离的原生窗口、daemon 及离线模型 provider，运行真实 OMP、pi 进程。状态断言从截图像素读取 `statusColor`，原生 `tab.color` 独立验证手动颜色。PNG 解码使用 Node 内置 zlib，不增加依赖。确认框 fixture 明示为自动验收、无需用户操作；runner 给原生等待五秒观察期，不支持的路径仍算失败，并发送 Escape 关闭弹框。每次运行都在输出目录保留 `summary.json`、快照、截图及进程清理证据。[验证技能](./.cursor/skills/verify-tern-tab-status/SKILL.md)和[功能地图](./.cursor/skills/verify-tern-tab-status/features/README.md)记录前置条件、操作路径、预期结果与证据要求。
 

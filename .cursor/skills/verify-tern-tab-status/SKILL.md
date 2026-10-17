@@ -5,7 +5,7 @@ description: Drive Tern Tab Status through the real macOS Tern native window, co
 
 # Verify Tern Tab Status
 
-Read [features/README.md](features/README.md) first. The primary surface is Tern's native desktop window and command palette; this plugin has no web UI. Node.js 22+, macOS, Tern with plugin/control CLI, and real `omp`/`pi` executables are prerequisites. Historical tab-color runs cover selected Tern 0.8.3–0.8.4, OMP 18.11.0–18.11.1 and Pi 1.1.0 scenarios. The latest copied-source host/window CSS run on Tern 0.9.1 (`a309fbb`), OMP 18.11.3 and Pi 1.1.0 passes 13 of 14 cases; unsupported OMP confirmation remains failed. These observations do not establish unconditional compatibility. Record exact versions and see [current evidence](../../../docs/readiness.md#current-css-cutover-evidence).
+Read [features/README.md](features/README.md) first. The primary surface is Tern's native desktop window and command palette; this plugin has no web UI. Node.js 22+, macOS, Tern with plugin/control CLI, and real `omp`/`pi` executables are prerequisites. Historical tab-color runs cover selected Tern 0.8.3–0.8.4, OMP 18.11.0–18.11.1 and Pi 1.1.0 scenarios. The latest copied-source host/window CSS run on Tern 0.9.2 (`23735aa`), OMP 18.11.3 and Pi 1.1.0 passes 14 of 15 cases, including opt-out sweep controls; unsupported OMP confirmation remains failed. These observations do not establish unconditional compatibility. Record exact versions and see [current evidence](../../../docs/readiness.md#current-css-cutover-evidence).
 
 ## Launch
 
@@ -25,6 +25,8 @@ The entire run, including teardown, is one bounded command. It reports `Native v
 ```sh
 node scripts/verify-native.mjs --case launch --out /tmp/tern-status-launch-$(date +%s)
 ```
+
+For the appearance preference, run `node scripts/verify-native.mjs --case sweep --out <new-directory>`. It launches both real agents, submits delayed OMP work, then drives **Disable Sweep Effects** / **Enable Sweep Effects** through the actual palette in vertical and horizontal tabs. Native animation paths distinguish the title and icon sweep from the independent blue-dot pulse; screenshots and pixel status remain the visual evidence. Reload disabled in each orientation and enabled at the end; Pause restores native sweep without resetting the option, and Resume suppresses it again. Only the applicable sweep action appears. The full run includes this case as `sweep-effects`.
 
 ## Doctor
 
@@ -82,6 +84,7 @@ Before claiming completion, inspect every `processes[].exitProof.observed` and e
 
 - `node scripts/verify-native.mjs --doctor`: prerequisite diagnosis, no native window.
 - `node scripts/verify-native.mjs --case launch --out <new-directory>`: both palette launch commands, cwd, selection, no prompt and settings restoration.
+- `node scripts/verify-native.mjs --case sweep --out <new-directory>`: real palette sweep controls, both orientations, blue-dot preservation, persisted preference across reload and Pause/Resume.
 - `node scripts/verify-native.mjs --out <new-directory>`: launch, real lifecycle, focused/read transitions, split/orientation priority, pixel status and native manual-color preservation across pause/resume/reload.
 - `scripts/fixtures/observer.luau`, `host.luau`, and `offline-provider.mjs`: copied into the private evidence directory by the runner; never install these in a daily configuration.
 

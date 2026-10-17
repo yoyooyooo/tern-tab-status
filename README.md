@@ -18,7 +18,7 @@
 
 When OMP and pi sessions run in different tabs or split panes, switching between them interrupts the work you are following. Tern Tab Status combines each tab's supported pane states into a right-side status dot in horizontal and vertical tabs. Agent icons stay side by side, tab titles stay yours, and neither agent needs a status hook or extension. Your chosen native tab color remains stored separately and appears when no status takes priority.
 
-Selected native checks cover **Tern 0.8.3–0.8.4 and 0.9.0–0.9.1, OMP 18.11.0–18.11.1 and 18.11.3, and pi 1.1.0 on macOS arm64**. The latest copied-source CSS run on Tern 0.9.1 passes 13 of 14 cases, including working, completion, failure, viewed results, Pi confirmation, mixed-pane priority, both tab orientations and manual colors across Pause/Resume/reload. The daily window also shows blue dots matching three running panes. The sole failed case is OMP standalone confirmation, which remains native idle and unsupported. The host timer-budget mechanism, untested daily high-ID paths and restoration of old large-ID color records remain limitations. See the [readiness record](./docs/readiness.md#current-css-cutover-evidence) for versions and evidence. Other platforms are unverified.
+Selected native checks cover **Tern 0.8.3–0.8.4 and 0.9.0–0.9.2, OMP 18.11.0–18.11.1 and 18.11.3, and pi 1.1.0 on macOS arm64**. The latest copied-source CSS run on Tern 0.9.2 passes 14 of 15 cases, including sweep controls, working, completion, failure, viewed results, Pi confirmation, mixed-pane priority, both tab orientations and manual colors across Pause/Resume/reload. The daily window also previously showed blue dots matching three running panes. The sole failed case is OMP standalone confirmation, which remains native idle and unsupported. The host timer-budget mechanism, untested daily high-ID paths and restoration of old large-ID color records remain limitations. See the [readiness record](./docs/readiness.md#current-css-cutover-evidence) for versions and evidence. Other platforms are unverified.
 
 ## Read the colors
 
@@ -32,7 +32,7 @@ Selected native checks cover **Tern 0.8.3–0.8.4 and 0.9.0–0.9.1, OMP 18.11.0
 
 A tab combines its OMP and pi panes, in this priority order: **red → yellow → green → blue → original color**. A green dot means attention is pending, not that the task passed review.
 
-While enabled, the plugin also disables Tern 0.9.0's running-tab title shimmer and white icon sweep in both tab orientations. Only the blue working dot gently changes brightness over a 2.4-second cycle; it stays opaque and does not grow or add a halo. Other status dots stay static, and reduced-motion preferences keep the working dot static too. Pause restores Tern's native appearance.
+Tern's running-tab title shimmer and white icon sweep are preserved by default in both tab orientations. Search **Tern Tab Status: Disable Sweep Effects** in the command palette to turn both off; **Enable Sweep Effects** restores them. Only the applicable action is shown. This preference persists across reloads and is shared across windows on their next refresh. Pause restores native appearance without resetting the preference; Resume reapplies it. The blue working dot independently changes brightness over a 2.4-second cycle; it stays opaque and does not grow or add a halo. Other status dots stay static, and reduced-motion preferences keep the working dot static too.
 
 ## Install
 
@@ -89,10 +89,13 @@ The command palette includes:
 - **New Pi Tab** (Agents): open a pi Agent Block in a new tab at the current directory.
 - **Tern Tab Status: Pause and Restore Tab Colors**: hide status styling, reveal native manual colors, and retry restoration of legacy saved colors.
 - **Tern Tab Status: Resume**: enable status styling again.
+- **Tern Tab Status: Disable Sweep Effects / Enable Sweep Effects**: switch native title/icon sweeps without pausing status dots; the palette shows the action for the current preference.
 
 The launch commands run `omp` and `pi` respectively, without an initial prompt. They preserve the configured default Agent command and placement, so the ordinary **New agent block** action continues to use both. Tern 0.8.3 requires briefly selecting the command and `new_tab` placement during synchronous creation; the plugin restores both preferences immediately, including when creation fails. Launching still works while status colors are paused.
 
 Both commands appear in the command palette and can be assigned keys in Tern's Keyboard settings. Their action IDs are `plugin.tern-tab-status.new_omp_tab` and `plugin.tern-tab-status.new_pi_tab`.
+
+The sweep action IDs are `plugin.tern-tab-status.disable_sweep` and `plugin.tern-tab-status.enable_sweep`. The stored `disable_sweep` option defaults to `false` when absent, including upgrades from the previous unconditional sweep suppression.
 
 The host module publishes full native pane IDs as strings when its roster changes, on shell lifecycle events and a 750 ms fallback poll. The window module uses those exact IDs to identify supported panes and build CSS targeting native `.tn-dk-c[data-pane][data-st]` elements. Native state changes drive the dot directly, without production `agents:list()` polling or writing status into `tab.color`. Direct `omp`/`pi` executable basenames are recognized; shell-hosted OMP uses a bounded `omp.session` descriptor query (one node, depth one, 128 characters). Window start, pane/tab, command, directory and title events synchronize identification and shared pause directly; focus and completion events update persisted read markers. The timer supplements those events rather than dispatching them. Paused refreshes skip identification. Manual colors remain real native tab colors throughout work, Pause, Resume and reload.
 
@@ -131,7 +134,7 @@ tern plugin unlink tern-tab-status
 tern plugin remove tern-tab-status
 ```
 
-Pause is persisted. Run **Resume** after reinstalling if status dots remain paused. Enabled state, pane IDs and read markers live in Tern's `plugin-data/tern-tab-status/kv.json` under its configuration directory. Unlinking does not erase that state. Older versions also saved original/applied tab colors. On upgrade, restoration writes the saved original only if the current native color still equals the old applied color, and clears that record only after observing successful restoration. A different current color is preserved and its obsolete record is discarded. Large-ID SDK color failures can leave matching old records unresolved; this does not block the new status dot.
+Pause and the sweep preference are persisted. Run **Resume** after reinstalling if status dots remain paused. Enabled state, `disable_sweep`, pane IDs and read markers live in Tern's `plugin-data/tern-tab-status/kv.json` under its configuration directory. Unlinking does not erase that state. Older versions also saved original/applied tab colors. On upgrade, restoration writes the saved original only if the current native color still equals the old applied color, and clears that record only after observing successful restoration. A different current color is preserved and its obsolete record is discarded. Large-ID SDK color failures can leave matching old records unresolved; this does not block the new status dot.
 
 ## Limitations
 
@@ -165,8 +168,11 @@ For native verification from this checkout:
 ```sh
 node scripts/verify-native.mjs --doctor
 node scripts/verify-native.mjs --case launch
+node scripts/verify-native.mjs --case sweep
 node scripts/verify-native.mjs
 ```
+
+The sweep case exercises the actual Disable/Enable Sweep Effects palette actions during real OMP work in both tab orientations, including reload and Pause/Resume. It records native animation paths and screenshots while checking that working dots stay blue.
 
 The doctor checks prerequisites without opening Tern. The launch case exercises both command-palette launchers. The full run uses an isolated native window, daemon, and offline model provider with real OMP and pi processes. Status assertions use screenshot pixels (`statusColor`); native `tab.color` remains the independent check for manual colors. PNG decoding uses Node's built-in zlib, with no added dependency. Confirmation fixtures identify themselves as automated checks requiring no user action; the runner allows five seconds for native waiting, records unsupported paths as failures, and sends Escape to close dialogs. Each run retains `summary.json`, snapshots, screenshots, and process cleanup evidence in its printed output directory. The [verification skill](./.cursor/skills/verify-tern-tab-status/SKILL.md) and [feature map](./.cursor/skills/verify-tern-tab-status/features/README.md) describe prerequisites, navigation, expected results, and evidence.
 
