@@ -5,6 +5,7 @@ Use the right-side CSS status dot to find running work, unseen results and block
 ## Sub-features
 
 - Blue during actual OMP and Pi provider work.
+- No Pi blue while only its long-lived launch shell is busy and daemon agent progress is idle.
 - Green after completion while away; red after failure while away.
 - Viewing the affected pane suppresses its completion/failure dot and reveals its native manual color, without mutating native attention or `tab.color`.
 - Completion or failure while focused is already viewed; leaving and reload must not resurrect its dot. The next unseen result must still show green/red.
@@ -24,6 +25,8 @@ node scripts/verify-native.mjs --out /tmp/tern-status-proof-$(date +%s)
 ```
 
 For both real hosts, the runner submits `VERIFY_SUCCESS` via `tern send <owned-pane> text VERIFY_SUCCESS`, then `tern send <owned-pane> keys enter`, with the isolated `TERN_CONFIG_DIR` and `TERN_DAEMON_SOCKET` environment, and focuses the owned initial pane. The deterministic external provider delays its reply so the observer can capture blue during `working`, then green with `idle` and unseen `alert`. It repeats with `VERIFY_FAILURE` for red, viewing each result to verify acknowledgment.
+
+The existing daily Pi pane exposed a window/daemon mismatch: window working with daemon `working=false`, producing a false blue dot. Verify that pane before/after the daemon-progress gate, then retain real Pi work/completion/failure/wait coverage in isolation. A fresh-daemon `ctl running pi` experiment kept window agent state idle and did not reproduce this mismatch; it is not a maintained passing regression. The failed attempt and actual daily screenshot evidence are recorded in [current cutover evidence](../../../../docs/readiness.md#current-css-cutover-evidence).
 
 The `omp-focused-completion` and `pi-focused-completion` cases run both `VERIFY_SUCCESS` and `VERIFY_FAILURE` while the pane stays focused. Require blue during work and original color at completion; then leave and reload, requiring that original color to remain. Submit a subsequent request and leave before it completes; green must appear again, then restore on viewing.
 

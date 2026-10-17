@@ -1,6 +1,8 @@
 local POLL_MS = 750
 local pending = nil
 local previous_css = nil
+local pi_working = {}
+local inspecting = false
 local shells = {sh = true, bash = true, zsh = true, fish = true, dash = true, ksh = true, csh = true, tcsh = true}
 local function optional(value)
     return if value == tern.json.null then nil else value
@@ -8,11 +10,11 @@ end
 local function supported(cx, pane, exact)
     local program = optional(pane.program)
     local name = program and string.match(program, "([^/\\]+)$")
-    if name == "omp" or name == "pi" then return true end
+    if name == "omp" or name == "pi" then return name end
     if not shells[name] then return false end
     local tree = optional(cx.session:surface(exact, {nodes = 1, depth = 1, max_chars = 128}))
     local surface = tree and optional(tree.surface)
-    return surface ~= nil and surface.role == "omp.session"
+    return if surface ~= nil and surface.role == "omp.session" then "omp" else nil
 end
 local BASE = [[
 :is(#sidebar,#tabbar) .tn-dk {position:static;display:flex;align-items:center;gap:2px;width:auto;height:16px;z-index:1;}
@@ -49,14 +51,17 @@ local function restore_legacy_colors(cx)
         end
     end
 end
-local function sync(cx)
+local function sync(cx, sampled)
     restore_legacy_colors(cx)
     local rules = {}
+    local has_pi = false
     if tern.kv.get("enabled") ~= false then
         table.insert(rules, BASE)
         for _, exact in ipairs(tern.kv.get("native-panes") or {}) do
             local pane = cx.session:pane(exact)
-            if pane and supported(cx, pane, exact) then
+            local program = pane and supported(cx, pane, exact)
+            if program then
+                if program == "pi" then has_pi = true end
                 local read_key = "read:" .. tostring(pane.pane)
                 local read = tern.kv.get(read_key)
                 if pane.focused and pane.alert and not read then
@@ -64,7 +69,9 @@ local function sync(cx)
                     tern.kv.set(read_key, true)
                 end
                 local selector = ':is(#sidebar,#tabbar) .tn-dk-c[data-pane="' .. exact .. '"]'
-                table.insert(rules, selector .. "[data-st='working']::after{display:block;background:#4c9eff;z-index:1;}")
+                if program ~= "pi" or pi_working[exact] == true then
+                    table.insert(rules, selector .. "[data-st='working']::after{display:block;background:#4c9eff;z-index:1;}")
+                end
                 table.insert(rules, selector .. "[data-st='waiting']::after{display:block;background:#e3c04b;z-index:3;}")
                 if not read then
                     table.insert(rules, selector .. "[data-st='done']::after," .. selector .. "[data-st='bell']::after{display:block;background:#4cbb70;z-index:2;}")
@@ -77,6 +84,30 @@ local function sync(cx)
     if css ~= previous_css then
         tern.css("status", css)
         previous_css = css
+    end
+    if has_pi and not sampled and not inspecting then
+        inspecting = true
+        -- Window busy includes the long-lived shell command; daemon working is agent progress.
+        local started = pcall(tern.process.run, {"tern", "inspect", "--json"}, {timeout_ms = 1500}, function(result, current)
+            inspecting = false
+            pi_working = {}
+            if result.status == 0 then
+                local ok, value = pcall(tern.json.decode, result.stdout)
+                if ok and type(value) == "table" and type(value.panes) == "table" then
+                    for _, item in ipairs(value.panes) do
+                        if type(item.pane) == "number" and type(item.working) == "boolean" then
+                            pi_working[string.format("%.0f", item.pane)] = item.working
+                        end
+                    end
+                end
+            end
+            if current then sync(current, true) end
+        end)
+        if not started then
+            inspecting = false
+            pi_working = {}
+            sync(cx, true)
+        end
     end
 end
 local tick

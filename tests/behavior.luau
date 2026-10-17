@@ -77,7 +77,7 @@ local function runtime(e)
         if self.timer then self.timer:cancel() end
         self.handlers, self.commands = {}, {}
         local api = {
-            json = {null = null}, kv = e.kv,
+            json = {null = null, decode = function(value) return value end}, kv = e.kv,
             css = function(_, css)
                 self.css = css
                 self.css_calls += 1
@@ -91,6 +91,9 @@ local function runtime(e)
                 return timer
             end,
         }
+        api.process = {run = function(_, _, callback)
+            self.inspect_callback = callback
+        end}
         load_window_plugin(api)
     end
     function r:tick()

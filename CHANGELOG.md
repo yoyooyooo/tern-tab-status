@@ -25,6 +25,9 @@
 - Add a focused New Pi Tab guide to both READMEs: separate pi installation and Node.js requirements, Tern-shell PATH/version checks, provider/model setup, verified Agent Block status and missing-command troubleshooting.
 - Disable Tern 0.9.0's running-tab title shimmer and white icon sweep in horizontal and vertical tabs while status styling is enabled; restore native appearance on Pause.
 - Give only blue working dots a gentle 2.4-second brightness cycle without transparency, scaling or a halo; respect reduced-motion preferences and keep other status dots static. Native screenshot classification recognizes the blue dot throughout its brightness cycle.
+- Fix idle Pi tabs showing blue when Tern retains the launch shell as busy. Require the exact pane's daemon `working` flag through an asynchronous local `tern inspect --json` call, with one request in flight per window and a 1.5-second timeout. Keep waiting/result colors native and document the PATH, polling and failed-observation limits.
+- Verify the existing daily false-blue pane before/after and retain normal real Pi work/completion/failure/wait coverage. A fresh-daemon shell-running experiment did not reproduce the old window mismatch; retain its failed evidence instead of treating it as a passing regression.
+- Verify the unchanged Pi false-blue runtime on Tern 0.9.1 (`a309fbb`), OMP 18.11.3 and Pi 1.1.0: 13/14 native cases pass, with the existing OMP standalone confirmation limitation still failed. Record the reported upgrade display gap as unconfirmed reconnection/state synchronization, not a second code fix.
 
 ## 0.1.0 (Unreleased)
 

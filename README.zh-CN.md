@@ -18,7 +18,7 @@
 
 OMP、pi 会话分散在不同 Tab 或分屏里时，来回切换会打断正在关注的工作。Tern Tab Status 把每个 Tab 中支持的 pane 状态汇总到横向标签栏和垂直侧栏右侧的状态圆点上。Agent 图标并排保留，标题仍由你控制，两者都不需要安装状态 hook 或扩展。手动选择的原生 Tab 颜色独立保留，在没有更高优先级状态时显示。
 
-部分原生检查覆盖 **macOS arm64 上的 Tern 0.8.3–0.8.4、OMP 18.11.0–18.11.1 和 pi 1.1.0**。最终复制安装的 CSS 运行时验收通过 14 项中的 13 项，覆盖运行、完成、失败、已读、Pi 确认等待、混合分屏优先级、横竖标签栏，以及 Pause/Resume/重载期间的手动颜色保留。正式日常插件重载后也观察到 Gmail 蓝点。唯一失败项是 OMP 独立确认框仍报告原生 idle，该路径不支持。宿主定时预算机制、日常大 ID 的完整生命周期和旧版大 ID 原色记录恢复仍有限制。版本与证据见[就绪记录](./docs/readiness.md#current-css-cutover-evidence)。其他平台尚未验证。
+部分原生检查覆盖 **macOS arm64 上的 Tern 0.8.3–0.8.4 和 0.9.0–0.9.1、OMP 18.11.0–18.11.1 和 18.11.3，以及 pi 1.1.0**。最新一次在 Tern 0.9.1 上复制安装的 CSS 运行时验收通过 14 项中的 13 项，覆盖运行、完成、失败、已读、Pi 确认等待、混合分屏优先级、横竖标签栏，以及 Pause/Resume/重载期间的手动颜色保留。日常窗口也观察到与三个运行中 pane 对应的蓝点。唯一失败项是 OMP 独立确认框仍报告原生 idle，该路径不支持。宿主定时预算机制、未经测试的日常大 ID 路径和旧版大 ID 原色记录恢复仍有限制。版本与证据见[就绪记录](./docs/readiness.md#current-css-cutover-evidence)。其他平台尚未验证。
 
 ## 读懂圆点
 
@@ -96,6 +96,8 @@ tern plugin install "$PWD"
 
 host 模块在 shell 生命周期事件及 750 ms 补漏轮询中检查 pane 名单，变化时发布完整原生 pane ID 字符串。window 模块用精确 ID 识别支持的 pane，并生成指向原生 `.tn-dk-c[data-pane][data-st]` 元素的 CSS。原生状态变化直接驱动圆点，生产运行不再轮询 `agents:list()`，也不把状态写入 `tab.color`。直接运行的 `omp`、`pi` 按可执行文件 basename 识别；shell 承载的 OMP 用有界 `omp.session` 描述查询识别（一个节点、深度一、128 字符）。窗口启动、pane/Tab、命令、目录和标题事件直接同步识别及共享暂停，焦点与完成事件更新持久已读标记；定时器补漏，不再负责派发这些事件的更新。暂停刷新跳过识别。运行、Pause、Resume、重载期间，手动颜色始终保持为真实原生 Tab 颜色。
 
+Pi 蓝点还会通过异步 `tern inspect --json` 核对 daemon 中精确 pane 的 `working` 标记，避免把长期存活的 Pi 启动 shell 当作正在执行的 Agent 轮次。每个窗口同一时刻只运行一次查询，超时为 1.5 秒，沿用生命周期事件和 750 ms 轮询刷新；Tern 的 PATH 中必须能找到 `tern`。首次成功观察前或查询失败时不显示 Pi 蓝点，等待和结果颜色仍跟随原生状态。
+
 ### 使用 New Pi Tab
 
 pi 需要单独安装，详见其[官方安装说明](https://github.com/earendil-works/pi#getting-started)。通过 npm 安装时，pi 需要 Node.js **22.19 或更高版本**：
@@ -138,14 +140,14 @@ tern plugin remove tern-tab-status
 - 绿色对应一般尚未查看的原生提醒，不是单独记录的成功结果；已经查看的完成结果可能不会显示绿色。
 - OMP、pi 按可执行文件 basename 识别；shell 承载的 OMP 另有有界 `omp.session` 回退。pi 原生状态请使用 **New Pi Tab** 或 pi Agent Block。普通 shell 中的 pi 及自定义包装程序名没有已验证的状态契约。pi 1.1.0 通过 OSC 7501 报告状态，旧版尚未验证。
 - 完整原生 pane 字符串让状态显示绕过 SDK 低 44 位颜色寻址路径。既有 daemon 上的受控窗口已用超过 `2^44` 的原生 ID 通过 12 项真实 OMP/pi 生命周期观察：运行、未读完成与失败、查看、重载保持已读，以及 Pi 等待与取消。部分日常 pane 也已精确识别并显示蓝点；这些样本不代表所有环境均兼容。SDK 限制仍影响旧版原色记录的升级恢复。详见[证据与限制](./docs/readiness.md#current-css-cutover-evidence)。
-- CSS 依赖 Tern 原生标签 DOM 和 `data-st` 状态词汇，已验证部分 Tern 0.8.4 场景；未来 DOM 变化可能需要更新。当前精确 pane CSS 不同于已否决的历史 title-marker 实验，在已观察范围内覆盖横向与垂直布局。
-- Tern 的定时回调超过 50 ms 墙钟预算后可能停用该插件 VM 的定时器，原生等待或被暂停调度也可能消耗预算。日常已捕获故障发生在现已移除的同步 `cx.agents:list()` 路径。原生 CSS 状态变化不再依赖该轮询，生命周期事件也已直接同步，不再等待定时回调。停用仍可能延迟没有生命周期事件送达的变化，例如安静窗口中的跨窗口暂停。宿主机制并未修复。详见[已知原生阻塞项](./docs/readiness.md#known-native-blockers)。
-- OMP 18.11.0–18.11.1 的独立扩展命令使用 `ctx.ui.confirm` 时，可能显示真实阻塞对话框，但 Tern 仍报告 `idle`；Tern 0.8.4 上仍观察到此限制。该路径没有黄点，仍不支持。Pi 的阻塞确认框报告 `waiting_input` 并显示黄色，聚焦时也保留；取消后露出原生手动颜色。普通模型、会话选择器并非都会报告等待。黄色跟随原生 `waiting` 渲染。
+- CSS 依赖 Tern 原生标签 DOM 和 `data-st` 状态词汇，已验证部分 Tern 0.8.4 和 0.9.0–0.9.1 场景；未来 DOM 变化可能需要更新。当前精确 pane CSS 不同于已否决的历史 title-marker 实验，在已观察范围内覆盖横向与垂直布局。
+- Tern 的定时回调超过 50 ms 墙钟预算后可能停用该插件 VM 的定时器，原生等待或被暂停调度也可能消耗预算。日常已捕获故障发生在现已移除的同步 `cx.agents:list()` 路径。OMP 状态及 Pi 的等待、结果状态仍由原生 DOM 直接驱动；Pi 蓝点另需异步 daemon 观察。定时器停用可能延迟没有生命周期事件送达时的 Pi 运行观察和跨窗口暂停。宿主机制并未修复。详见[已知原生阻塞项](./docs/readiness.md#known-native-blockers)。
+- OMP 的独立扩展命令使用 `ctx.ui.confirm` 时，可能显示真实阻塞对话框，但 Tern 仍报告 `idle`；OMP 18.11.3 与 Tern 0.9.1 上仍观察到此限制。该路径没有黄点，仍不支持。Pi 的阻塞确认框报告 `waiting_input` 并显示黄色，聚焦时也保留；取消后露出原生手动颜色。普通模型、会话选择器并非都会报告等待。黄色跟随原生 `waiting` 渲染。
 - 观察器可能错过极短的原生状态。暂停通过插件存储跨窗口共享，其他窗口下次刷新时应用。没有窗口时，窗口插件不执行同步。
 
 ## 隐私
 
-插件读取原生 pane ID、pane 元数据、用于识别 shell 承载 OMP 的有界 surface 描述、旧版原色记录，以及默认 Agent 命令和放置方式。它安装本地 CSS，并写入自己的本地键值状态。状态显示不写 Tab 颜色；仅升级恢复可能调用原生颜色 API。执行启动命令时，会让 Tern 启动 `omp` 或 `pi`，临时选定、随后恢复两个偏好。不发网络请求、不安装 Agent 扩展、不保存对话文本。报告渠道与信任边界见 [SECURITY.md](./SECURITY.md)。
+插件读取原生 pane ID、pane 元数据、用于识别 shell 承载 OMP 的有界 surface 描述、旧版原色记录，以及默认 Agent 命令和放置方式。启用且存在 Pi pane 时，会运行本地 `tern inspect --json` 读取实际运行进度；响应包含本地 pane、session 和客户端元数据，提取 pane ID 和 working 标记后即丢弃。插件安装本地 CSS，并写入自己的本地键值状态。状态显示不写 Tab 颜色；仅升级恢复可能调用原生颜色 API。执行启动命令时，会让 Tern 启动 `omp` 或 `pi`，临时选定、随后恢复两个偏好。不发网络请求、不安装 Agent 扩展、不保存对话文本。报告渠道与信任边界见 [SECURITY.md](./SECURITY.md)。
 
 ## 开发
 
